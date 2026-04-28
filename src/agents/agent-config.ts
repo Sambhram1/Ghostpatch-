@@ -1,20 +1,15 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import os from "node:os";
-import path from "node:path";
 
 import type { AgentConnection } from "./types.js";
 import type { CodingAgentName } from "../types.js";
+import { ghostpatchHome, ghostpatchPath } from "../config-home.js";
 
 interface AgentConfigFile {
   agents: Record<string, AgentConnection>;
 }
 
-function ghostpatchHome(): string {
-  return process.env.GHOSTPATCH_HOME ?? path.join(os.homedir(), ".ghostpatch");
-}
-
 function configPath(): string {
-  return path.join(ghostpatchHome(), "config.json");
+  return ghostpatchPath("config.json");
 }
 
 const defaultConnections: AgentConnection[] = [

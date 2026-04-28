@@ -9,6 +9,9 @@ import {
   saveAgentConnection
 } from "./agents/agent-config.js";
 import { createAgentProvider } from "./agents/agent-registry.js";
+import { runSetupWizard } from "./ui/setup-wizard.js";
+import { runScanSession } from "./ui/scan-session.js";
+import { runReviewSession } from "./ui/review-session.js";
 
 async function main(): Promise<void> {
   const options = parseCli(process.argv.slice(2));
@@ -25,6 +28,21 @@ async function main(): Promise<void> {
       const status = await provider.status();
       console.log(`${connection.agent}: ${status.ready ? "ready" : "not ready"} (${status.detail})`);
     }
+    return;
+  }
+
+  if (options.command === "setup") {
+    await runSetupWizard();
+    return;
+  }
+
+  if (options.command === "scan") {
+    await runScanSession();
+    return;
+  }
+
+  if (options.command === "review") {
+    await runReviewSession();
     return;
   }
 

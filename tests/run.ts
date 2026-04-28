@@ -1,6 +1,8 @@
 import { testOrchestratorReport } from "./orchestrator.test.js";
 import { testDirectPrArtifact, testIssueArtifact } from "./social.test.js";
 import { testLoginParsing, testRunAgentParsing } from "./cli.test.js";
+import { testTerminalCommandParsing } from "./cli-commands.test.js";
+import { testPreferencesRoundTrip } from "./preferences.test.js";
 import {
   testDirectPrTriage,
   testIssueFirstTriage,
@@ -15,7 +17,9 @@ const checks: Array<[string, () => Promise<void>]> = [
   ["social issue artifact", testIssueArtifact],
   ["orchestrator report", testOrchestratorReport],
   ["CLI run agent parsing", testRunAgentParsing],
-  ["CLI login parsing", testLoginParsing]
+  ["CLI login parsing", testLoginParsing],
+  ["CLI terminal command parsing", testTerminalCommandParsing],
+  ["preferences round trip", testPreferencesRoundTrip]
 ];
 
 async function main(): Promise<void> {

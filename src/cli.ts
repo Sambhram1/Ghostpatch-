@@ -1,6 +1,13 @@
 import type { CodingAgentName } from "./types.js";
 
-export type CliOptions = RunOptions | LoginOptions | AgentsOptions | HelpOptions;
+export type CliOptions =
+  | RunOptions
+  | LoginOptions
+  | AgentsOptions
+  | SetupOptions
+  | ScanOptions
+  | ReviewOptions
+  | HelpOptions;
 
 export interface RunOptions {
   command: "run";
@@ -20,6 +27,18 @@ export interface AgentsOptions {
   command: "agents";
 }
 
+export interface SetupOptions {
+  command: "setup";
+}
+
+export interface ScanOptions {
+  command: "scan";
+}
+
+export interface ReviewOptions {
+  command: "review";
+}
+
 export interface HelpOptions {
   command: "help";
   message: string;
@@ -31,7 +50,7 @@ export function parseCli(argv: string[]): CliOptions {
     return { command: "help", message: helpText() };
   }
 
-  if (command === "agents") {
+  if (command === "agents" || command === "setup" || command === "scan" || command === "review") {
     return { command };
   }
 
@@ -88,10 +107,16 @@ function helpText(): string {
     "",
     "Commands:",
     "  ghostpatch run [--agent local|codex|claude] [--fixture slug]",
+    "  ghostpatch setup",
+    "  ghostpatch scan",
+    "  ghostpatch review",
     "  ghostpatch login <local|codex|claude> [--command path] [--dry-run-command command] [--env ENV_VAR]",
     "  ghostpatch agents",
     "",
     "Examples:",
+    "  ghostpatch setup",
+    "  ghostpatch scan",
+    "  ghostpatch review",
     "  ghostpatch login codex --command codex",
     "  ghostpatch login claude --command claude",
     "  ghostpatch login codex --dry-run-command \"codex exec --sandbox read-only {{prompt}}\"",
