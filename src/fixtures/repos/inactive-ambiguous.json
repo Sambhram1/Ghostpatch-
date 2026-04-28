@@ -1,0 +1,30 @@
+{
+  "slug": "inactive-ambiguous",
+  "title": "Refactor logging around flaky worker",
+  "repo": "abandoned/worker-stack",
+  "language": "typescript",
+  "summary": "Logging cleanup may help understand a flaky worker issue.",
+  "repoActivityDays": 120,
+  "maintainerResponseDays": 40,
+  "hasTests": false,
+  "diffRisk": 7,
+  "ambiguityRisk": 8,
+  "antiBotPolicy": true,
+  "contributionGuide": "No unsolicited bot contributions.",
+  "expectedBehavior": "Worker logging should clearly identify flake origin.",
+  "actualBehavior": "Root cause is unclear and logs are noisy.",
+  "reproductionSteps": [
+    "Run the worker repeatedly.",
+    "Observe intermittent failure without a stable repro.",
+    "Inspect noisy logs."
+  ],
+  "validationCommand": "npm test -- flaky-worker",
+  "patchOutline": [
+    "Rework logging around the worker scheduler.",
+    "Maybe restructure retries and error formatting."
+  ],
+  "suggestedFiles": [
+    "src/worker.ts",
+    "src/logger.ts"
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "slug": "python-fastapi-bug",
+  "title": "Normalize trailing slash parsing for config loader",
+  "repo": "friendly/fastapi-toolkit",
+  "language": "python",
+  "summary": "Config loader rejects valid paths ending in a slash.",
+  "repoActivityDays": 4,
+  "maintainerResponseDays": 2,
+  "hasTests": true,
+  "diffRisk": 2,
+  "ambiguityRisk": 1,
+  "antiBotPolicy": false,
+  "contributionGuide": "Small bugfix PRs with tests are welcome.",
+  "expectedBehavior": "A directory path ending with a slash loads successfully.",
+  "actualBehavior": "The loader strips the final segment and raises file not found.",
+  "reproductionSteps": [
+    "Create a config path ending with '/'.",
+    "Run the config loader against the path.",
+    "Observe file not found even though the directory exists."
+  ],
+  "validationCommand": "pytest tests/test_loader.py -k trailing_slash",
+  "patchOutline": [
+    "Normalize the path before basename extraction.",
+    "Preserve the final directory segment when the path ends with a slash.",
+    "Add a regression test for trailing slash input."
+  ],
+  "suggestedFiles": [
+    "src/config_loader.py",
+    "tests/test_loader.py"
+  ],
+  "prHint": "Fix trailing slash normalization in config loader."
+}

@@ -1,0 +1,33 @@
+{
+  "slug": "ts-cli-regression",
+  "title": "Avoid crashing when config key is missing",
+  "repo": "helpful/ts-cli-runner",
+  "language": "typescript",
+  "summary": "CLI crashes on missing optional config key instead of falling back.",
+  "repoActivityDays": 8,
+  "maintainerResponseDays": 5,
+  "hasTests": true,
+  "diffRisk": 3,
+  "ambiguityRisk": 5,
+  "antiBotPolicy": false,
+  "contributionGuide": "Issues preferred for behavior changes unless the bug is obvious.",
+  "expectedBehavior": "CLI should fall back to defaults when optional config is absent.",
+  "actualBehavior": "CLI throws during startup when the optional key is undefined.",
+  "reproductionSteps": [
+    "Remove the optional key from the config file.",
+    "Run the CLI entrypoint.",
+    "Observe an exception before command parsing completes."
+  ],
+  "validationCommand": "npm test -- config-fallback",
+  "patchOutline": [
+    "Confirm whether fallback behavior matches current documented expectations.",
+    "Guard missing optional config before startup parse.",
+    "Add a regression test once behavior is confirmed."
+  ],
+  "suggestedFiles": [
+    "src/config.ts",
+    "src/cli.ts",
+    "tests/config-fallback.test.ts"
+  ],
+  "issueHint": "Need maintainer confirmation on intended fallback semantics."
+}
