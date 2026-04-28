@@ -88,7 +88,9 @@ export interface PatchPlan {
   outline: string[];
   diffBudget: number;
   agentName?: CodingAgentName;
-  agentMode?: "deterministic" | "external-ready";
+  agentMode?: "deterministic" | "external-ready" | "external-dry-run";
+  agentOutput?: string;
+  agentExitCode?: number;
 }
 
 export interface ReviewResult {

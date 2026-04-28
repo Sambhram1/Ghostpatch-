@@ -43,12 +43,14 @@ async function writeConfig(config: AgentConfigFile): Promise<void> {
 export async function saveAgentConnection(input: {
   agent: CodingAgentName;
   command?: string;
+  dryRunCommand?: string;
   envVar?: string;
 }): Promise<AgentConnection> {
   const config = await readConfig();
   const connection: AgentConnection = {
     agent: input.agent,
     command: input.command,
+    dryRunCommand: input.dryRunCommand,
     envVar: input.envVar,
     configuredAt: new Date().toISOString()
   };

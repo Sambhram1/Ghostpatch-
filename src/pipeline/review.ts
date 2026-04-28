@@ -17,6 +17,11 @@ export function reviewArtifacts(
     aiSmellScore += 0.2;
   }
 
+  if (typeof patch.agentExitCode === "number" && patch.agentExitCode !== 0) {
+    warnings.push(`External agent dry run failed with exit code ${patch.agentExitCode}.`);
+    aiSmellScore += 0.5;
+  }
+
   if (opportunity.summary.toLowerCase().includes("maybe")) {
     warnings.push("Opportunity statement is too ambiguous.");
     aiSmellScore += 0.25;

@@ -23,6 +23,15 @@ function renderRun(run: OpportunityRun): string {
     lines.push(`Patch agent: ${run.patch.agentName} (${run.patch.agentMode})`);
   }
 
+  if (typeof run.patch?.agentExitCode === "number") {
+    lines.push(`Agent exit code: ${run.patch.agentExitCode}`);
+  }
+
+  if (run.patch?.agentOutput) {
+    lines.push("Agent dry-run output:");
+    lines.push(run.patch.agentOutput);
+  }
+
   if (run.social.issueTitle) {
     lines.push(`Issue title: ${run.social.issueTitle}`);
   }

@@ -12,6 +12,7 @@ export interface LoginOptions {
   command: "login";
   agent: CodingAgentName;
   commandPath?: string;
+  dryRunCommand?: string;
   envVar?: string;
 }
 
@@ -57,12 +58,14 @@ export function parseCli(argv: string[]): CliOptions {
 function parseLogin(rest: string[]): LoginOptions {
   const agent = parseAgent(rest[0]);
   const commandIndex = rest.indexOf("--command");
+  const dryRunCommandIndex = rest.indexOf("--dry-run-command");
   const envIndex = rest.indexOf("--env");
 
   return {
     command: "login",
     agent,
     commandPath: commandIndex >= 0 ? rest[commandIndex + 1] : undefined,
+    dryRunCommand: dryRunCommandIndex >= 0 ? rest[dryRunCommandIndex + 1] : undefined,
     envVar: envIndex >= 0 ? rest[envIndex + 1] : undefined
   };
 }
@@ -85,12 +88,13 @@ function helpText(): string {
     "",
     "Commands:",
     "  ghostpatch run [--agent local|codex|claude] [--fixture slug]",
-    "  ghostpatch login <local|codex|claude> [--command path] [--env ENV_VAR]",
+    "  ghostpatch login <local|codex|claude> [--command path] [--dry-run-command command] [--env ENV_VAR]",
     "  ghostpatch agents",
     "",
     "Examples:",
     "  ghostpatch login codex --command codex",
     "  ghostpatch login claude --command claude",
+    "  ghostpatch login codex --dry-run-command \"codex exec --sandbox read-only {{prompt}}\"",
     "  ghostpatch run --agent codex --fixture python-fastapi-bug"
   ].join("\n");
 }

@@ -32,11 +32,12 @@ ghostpatch login claude --command claude
 ghostpatch run --agent codex --fixture python-fastapi-bug
 ```
 
-`login` does not store API secrets. It registers how Ghostpatch should reach a coding agent, either through a CLI command or an environment variable:
+`login` does not store API secrets. It registers how Ghostpatch should reach a coding agent, either through a CLI command, a dry-run command, or an environment variable:
 
 ```bash
 ghostpatch login codex --command codex
 ghostpatch login claude --env ANTHROPIC_API_KEY
+ghostpatch login codex --dry-run-command "codex exec --sandbox read-only {{prompt}}"
 ```
 
 Configuration is stored in `~/.ghostpatch/config.json`. Set `GHOSTPATCH_HOME` to use a different config directory.
@@ -44,6 +45,13 @@ Configuration is stored in `~/.ghostpatch/config.json`. Set `GHOSTPATCH_HOME` to
 ## Agent Model
 
 Ghostpatch keeps GitHub side effects centralized in the orchestrator. Coding agents are worker providers: they can generate patch plans and review artifacts, but they do not publish issues or PRs directly.
+
+External providers run in dry-run mode. Ghostpatch passes a prompt asking the agent to return a patch plan only, captures stdout/stderr/exit code, and blocks the contribution if the agent command fails. Default commands are:
+
+```bash
+codex exec --sandbox read-only --cd <cwd> <prompt>
+claude -p --permission-mode default <prompt>
+```
 
 ## Next
 

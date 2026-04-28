@@ -32,6 +32,7 @@ async function main(): Promise<void> {
     const connection = await saveAgentConnection({
       agent: options.agent,
       command: options.commandPath,
+      dryRunCommand: options.dryRunCommand,
       envVar: options.envVar
     });
     const provider = createAgentProvider(connection.agent, connection);

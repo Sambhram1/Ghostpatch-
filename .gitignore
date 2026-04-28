@@ -5,3 +5,4 @@ coverage/
 reports/
 .npm-cache/
 .tmp-ghostpatch/
+.tmp-*/

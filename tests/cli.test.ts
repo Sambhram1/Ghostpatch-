@@ -15,7 +15,14 @@ export async function testRunAgentParsing(): Promise<void> {
 }
 
 export async function testLoginParsing(): Promise<void> {
-  const options = parseCli(["login", "claude", "--command", "claude"]);
+  const options = parseCli([
+    "login",
+    "claude",
+    "--command",
+    "claude",
+    "--dry-run-command",
+    "claude -p {{prompt}}"
+  ]);
 
   assert.equal(options.command, "login");
   if (options.command !== "login") {
@@ -24,4 +31,5 @@ export async function testLoginParsing(): Promise<void> {
 
   assert.equal(options.agent, "claude");
   assert.equal(options.commandPath, "claude");
+  assert.equal(options.dryRunCommand, "claude -p {{prompt}}");
 }

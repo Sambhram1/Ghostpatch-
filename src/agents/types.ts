@@ -10,6 +10,7 @@ import type { GhostpatchConfig } from "../config.js";
 export interface AgentConnection {
   agent: CodingAgentName;
   command?: string;
+  dryRunCommand?: string;
   envVar?: string;
   configuredAt?: string;
 }
