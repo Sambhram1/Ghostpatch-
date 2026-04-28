@@ -19,6 +19,10 @@ function renderRun(run: OpportunityRun): string {
     lines.push(`AI smell score: ${run.review.aiSmellScore}`);
   }
 
+  if (run.patch?.agentName) {
+    lines.push(`Patch agent: ${run.patch.agentName} (${run.patch.agentMode})`);
+  }
+
   if (run.social.issueTitle) {
     lines.push(`Issue title: ${run.social.issueTitle}`);
   }
@@ -34,6 +38,7 @@ export function renderReport(report: RunReport): string {
   const header = [
     "Ghostpatch Dry Run Report",
     `Generated: ${report.generatedAt}`,
+    `Agent: ${report.agentName}`,
     `Fixture count: ${report.totalCandidates}`,
     ""
   ].join("\n");

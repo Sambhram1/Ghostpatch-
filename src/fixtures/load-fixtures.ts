@@ -3,7 +3,24 @@ import path from "node:path";
 
 import type { Opportunity, OpportunitySeed } from "../types.js";
 
-const repoDir = path.resolve(process.cwd(), "src", "fixtures", "repos");
+async function findRepoDir(): Promise<string> {
+  const candidates = [
+    path.resolve(process.cwd(), "src", "fixtures", "repos"),
+    path.resolve(import.meta.dirname, "../../../src/fixtures/repos"),
+    path.resolve(import.meta.dirname, "repos")
+  ];
+
+  for (const candidate of candidates) {
+    try {
+      await readdir(candidate);
+      return candidate;
+    } catch {
+      // Try the next package layout.
+    }
+  }
+
+  throw new Error("Could not find Ghostpatch fixture repository data.");
+}
 
 function toOpportunity(seed: OpportunitySeed): Opportunity {
   return {
@@ -33,6 +50,7 @@ function toOpportunity(seed: OpportunitySeed): Opportunity {
 }
 
 export async function loadFixtures(slug?: string): Promise<Opportunity[]> {
+  const repoDir = await findRepoDir();
   const entries = await readdir(repoDir);
   const selectedEntries = entries.filter((entry) => entry.endsWith(".json"));
   const opportunities = await Promise.all(

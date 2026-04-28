@@ -6,18 +6,44 @@ Ghostpatch is a merge-rate-first open-source contribution operator. This reposit
 
 - Public Python and TypeScript repositories only
 - Fixture-backed discovery instead of live GitHub crawling
+- Agent-selectable patch planning with `local`, `codex`, and `claude`
 - Deterministic triage, reproduction, review, and social decisioning
 - Human-readable dry-run report output
 
-## Commands
+## Local Commands
 
 ```bash
 npm install
 npm run build
 npm test
 npm run dev
-node build/index.js run --fixture python-fastapi-bug
+node build/src/index.js run --fixture python-fastapi-bug
 ```
+
+## CLI Usage
+
+After publishing to npm, users can install and run Ghostpatch like this:
+
+```bash
+npm install -g ghostpatch
+ghostpatch agents
+ghostpatch login codex --command codex
+ghostpatch login claude --command claude
+ghostpatch run --agent codex --fixture python-fastapi-bug
+```
+
+`login` does not store API secrets. It registers how Ghostpatch should reach a coding agent, either through a CLI command or an environment variable:
+
+```bash
+ghostpatch login codex --command codex
+ghostpatch login claude --env ANTHROPIC_API_KEY
+```
+
+Configuration is stored in `~/.ghostpatch/config.json`. Set `GHOSTPATCH_HOME` to use a different config directory.
+
+## Agent Model
+
+Ghostpatch keeps GitHub side effects centralized in the orchestrator. Coding agents are worker providers: they can generate patch plans and review artifacts, but they do not publish issues or PRs directly.
 
 ## Next
 

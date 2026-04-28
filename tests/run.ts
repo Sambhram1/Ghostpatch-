@@ -1,5 +1,6 @@
 import { testOrchestratorReport } from "./orchestrator.test.js";
 import { testDirectPrArtifact, testIssueArtifact } from "./social.test.js";
+import { testLoginParsing, testRunAgentParsing } from "./cli.test.js";
 import {
   testDirectPrTriage,
   testIssueFirstTriage,
@@ -12,7 +13,9 @@ const checks: Array<[string, () => Promise<void>]> = [
   ["triage skip", testSkipTriage],
   ["social PR artifact", testDirectPrArtifact],
   ["social issue artifact", testIssueArtifact],
-  ["orchestrator report", testOrchestratorReport]
+  ["orchestrator report", testOrchestratorReport],
+  ["CLI run agent parsing", testRunAgentParsing],
+  ["CLI login parsing", testLoginParsing]
 ];
 
 async function main(): Promise<void> {

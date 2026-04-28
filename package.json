@@ -4,12 +4,23 @@
   "description": "A merge-rate-first dry-run OSS contribution operator.",
   "type": "module",
   "main": "build/src/index.js",
+  "bin": {
+    "ghostpatch": "build/src/index.js"
+  },
+  "files": [
+    "build/src",
+    "src/fixtures/repos",
+    "README.md",
+    "docs/superpowers/specs",
+    "docs/superpowers/plans"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "dev": "npm run build && node build/src/index.js run",
     "start": "node build/src/index.js run",
     "test": "npm run build && node build/tests/run.js",
-    "lint": "tsc --noEmit -p tsconfig.json"
+    "lint": "tsc --noEmit -p tsconfig.json",
+    "setup": "npm run build && node build/src/index.js login"
   },
   "engines": {
     "node": ">=22.0.0"

@@ -2,6 +2,8 @@ export type SupportedLanguage = "python" | "typescript";
 
 export type DecisionMode = "direct-pr" | "issue-first" | "skip";
 
+export type CodingAgentName = "local" | "codex" | "claude";
+
 export type TriageReasonCode =
   | "supported-language"
   | "unsupported-language"
@@ -85,6 +87,8 @@ export interface PatchPlan {
   files: string[];
   outline: string[];
   diffBudget: number;
+  agentName?: CodingAgentName;
+  agentMode?: "deterministic" | "external-ready";
 }
 
 export interface ReviewResult {
@@ -113,5 +117,6 @@ export interface OpportunityRun {
 export interface RunReport {
   generatedAt: string;
   totalCandidates: number;
+  agentName: CodingAgentName;
   runs: OpportunityRun[];
 }
