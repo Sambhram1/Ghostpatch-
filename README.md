@@ -1,46 +1,131 @@
 # Ghostpatch
 
-Ghostpatch is a merge-rate-first open-source contribution operator. It scans candidate GitHub issues, qualifies them for patchability and safety, runs a selected coding agent in an isolated local workspace, stores diff/test evidence, and only publishes issues or pull requests after explicit user approval.
+Ghostpatch is an agent-native skill for Codex, Claude Code, and other coding agents. It helps an agent find open-source GitHub issues, qualify good candidates, solve them locally, review the diff and tests, and raise a pull request only after user approval.
+
+The main product is the Agent Skill:
+
+```bash
+npx skills add https://github.com/Sambhram1/Ghostpatch- --skill ghostpatch
+```
+
+The npm package provides the executable engine used by the skill:
 
 ```bash
 npm install -g @sambhram06/ghostpatch
-ghostpatch setup
-ghostpatch scan --live
-ghostpatch review
 ```
 
-## Status
+After install, ask your agent:
 
-Ghostpatch is an early MVP for supervised contribution workflows. It is designed to keep live GitHub side effects behind review prompts, not to publish autonomously.
+```text
+Use Ghostpatch to find a good issue in my configured repos, solve it locally, and prepare a PR for my approval.
+```
+
+## What It Does
+
+Ghostpatch gives agents a supervised open-source contribution workflow:
+
+- find repositories and open GitHub issues
+- qualify candidates by labels, reproduction detail, tests, contribution-guide signals, bot/AI restrictions, and license metadata
+- clone selected repos into `~/.ghostpatch/workspaces`
+- ask Codex, Claude, or a local deterministic agent to solve locally
+- run the configured validation command
+- store scan history, review state, patch results, command logs, reproduction logs, diffs, and test output
+- show what changed and what risk remains
+- publish issues or PRs only after explicit user confirmation
+
+Ghostpatch is not an autonomous PR bot. It is designed for supervised agent work.
+
+## Install as a Skill
+
+From skills.sh / skills CLI:
+
+```bash
+npx skills add https://github.com/Sambhram1/Ghostpatch- --skill ghostpatch
+```
+
+If your agent supports npm-distributed skills, the npm package includes:
+
+```text
+skills/ghostpatch/SKILL.md
+skills/ghostpatch/scripts/ghostpatch.mjs
+```
+
+The skill runner calls a local `ghostpatch` binary when available and falls back to:
+
+```bash
+npx --yes @sambhram06/ghostpatch
+```
+
+## Install the Engine
+
+The skill can run through `npx`, but global install is faster:
+
+```bash
+npm install -g @sambhram06/ghostpatch
+```
+
+The installed command is:
+
+```bash
+ghostpatch
+```
 
 ## Requirements
 
 - Node.js 22 or newer
 - Git
-- GitHub CLI for live mode
-- `gh auth login` before live scanning or publishing
-- Optional: Codex CLI or Claude CLI for agent-backed solving
+- GitHub CLI
+- `gh auth login` before live scan or publish
+- Optional: Codex CLI or Claude CLI
 
-## Install
+## First Run
 
-From npm:
+Run setup once:
 
 ```bash
-npm install -g @sambhram06/ghostpatch
 ghostpatch setup
 ```
 
-From source:
+Or through the skill runner:
 
 ```bash
-git clone https://github.com/Sambhram1/Ghostpatch-.git
-cd Ghostpatch-
-npm install
-npm run build
-node build/src/index.js scan
+node skills/ghostpatch/scripts/ghostpatch.mjs setup
 ```
 
-## CLI Usage
+Setup stores:
+
+- preferred agent: `local`, `codex`, or `claude`
+- preferred languages
+- manual repos or auto-search mode
+- approval mode
+- per-repo validation command overrides
+
+Per-repo validation commands use:
+
+```text
+owner/name=npm test -- config, other/repo=pytest tests/test_loader.py
+```
+
+## Agent Workflow
+
+When the skill is installed, the agent should use:
+
+```bash
+node <skill-folder>/scripts/ghostpatch.mjs scan --live
+node <skill-folder>/scripts/ghostpatch.mjs review
+```
+
+The review command is where solving and publishing happen. It can:
+
+- compare candidate quality
+- resume interrupted reviews
+- reject candidates with reasons
+- show issue and PR drafts
+- ask the configured agent to solve locally
+- show changed files, test output, blockers, and remaining risk
+- create issues or PRs only after confirmation
+
+## CLI Commands
 
 ```bash
 ghostpatch setup
@@ -54,35 +139,9 @@ ghostpatch login codex --dry-run-command "codex exec --sandbox read-only {{promp
 ghostpatch run --agent codex --fixture python-fastapi-bug
 ```
 
-`setup` opens a terminal wizard that stores the preferred agent, languages, repository source mode, approval mode, manual repositories, and optional per-repository validation commands.
+Use plain `ghostpatch scan` for a safe fixture demo.
 
-Per-repository validation commands use this form:
-
-```text
-owner/name=npm test -- config, other/repo=pytest tests/test_loader.py
-```
-
-Configuration is stored under `~/.ghostpatch`. Set `GHOSTPATCH_HOME` to use a different directory.
-
-## Live GitHub Mode
-
-`ghostpatch scan --live` uses GitHub CLI to:
-
-- check authentication
-- inspect configured repositories
-- list open issues
-- qualify candidates by labels, reproduction detail, concrete broken behavior, tests, contribution-guide signals, bot/AI restrictions, and license metadata
-- save the latest report and durable scan history
-
-`ghostpatch review` lets the user:
-
-- compare candidate quality
-- resume interrupted reviews
-- inspect issue and PR drafts
-- reject candidates with a durable reason
-- ask the configured agent to solve locally
-- review changed files, diff budget, test output, blockers, and remaining risk
-- publish an issue or PR only after confirmation
+Use `ghostpatch scan --live` for real GitHub issue discovery.
 
 ## Safety Model
 
@@ -112,19 +171,6 @@ Live patching happens under `~/.ghostpatch/workspaces`, not in the Ghostpatch so
 - Patch results: `~/.ghostpatch/patch-results`
 - Workspaces: `~/.ghostpatch/workspaces`
 
-## Agent Model
-
-Ghostpatch keeps GitHub side effects centralized in its review session. Coding agents are patch workers: they can generate plans and local edits, but they do not create issues, push branches, or open pull requests directly.
-
-Default external commands:
-
-```bash
-codex exec --sandbox read-only --cd <cwd> <prompt>
-claude -p --permission-mode default <prompt>
-```
-
-Live solve mode invokes the configured agent in a workspace-write context against a cloned repository and then runs the candidate validation command.
-
 ## Development
 
 ```bash
@@ -134,50 +180,28 @@ npm test
 npm run lint
 npm pack --dry-run --cache .npm-cache
 node build/src/index.js run --fixture python-fastapi-bug
+python C:\Users\sambh\.codex\skills\.system\skill-creator\scripts\quick_validate.py skills\ghostpatch
 ```
 
-## Publishing to npm
+## Publishing
 
-Before publishing:
+Publish the npm engine:
 
 ```bash
 npm test
 npm run lint
 npm pack --dry-run --cache .npm-cache
-npm login
 npm publish --access public
 ```
 
-The package is published as `@sambhram06/ghostpatch` because the unscoped `ghostpatch` npm name is already taken. It still installs the `ghostpatch` CLI binary. The package includes the compiled CLI under `build/src`, fixture data, docs, the bundled `skills/ghostpatch` Agent Skill, and the MIT license.
-
-## Publishing to skills.sh
-
-This repository includes an Agent Skill at:
-
-```text
-skills/ghostpatch/SKILL.md
-```
-
-Validate the skill before publishing:
+Publish the skill from GitHub when your GitHub CLI supports `gh skill`:
 
 ```bash
-python C:\Users\sambh\.codex\skills\.system\skill-creator\scripts\quick_validate.py skills\ghostpatch
 gh skill publish --dry-run
-```
-
-`gh skill publish` requires a GitHub CLI build with the `gh skill` command available. If `gh skill` is not listed in `gh --help`, update GitHub CLI before running the dry run.
-
-If validation passes, publish through GitHub CLI:
-
-```bash
 gh skill publish --tag v0.1.0
 ```
 
-After the GitHub release is published, users can install the skill with:
-
-```bash
-npx skills add https://github.com/Sambhram1/Ghostpatch- --skill ghostpatch
-```
+The package name is `@sambhram06/ghostpatch` because the unscoped `ghostpatch` npm name is already taken. The CLI binary remains `ghostpatch`.
 
 ## License
 

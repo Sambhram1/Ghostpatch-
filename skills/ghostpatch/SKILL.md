@@ -1,74 +1,112 @@
 ---
 name: ghostpatch
-description: Use Ghostpatch to find, qualify, locally solve, review, and approval-gate open-source GitHub issue contributions with the Ghostpatch npm CLI. Trigger when a user wants an agent-assisted OSS contribution workflow, live GitHub issue scanning, candidate triage, local patch solving, PR/issue draft review, or safe publication through GitHub CLI.
+description: Use Ghostpatch as an agent-native open-source contribution plugin for Codex, Claude Code, and other coding agents. Trigger when a user wants the agent to find repositories, discover GitHub issues, qualify candidates, solve issues locally, review diffs/tests, and raise approval-gated pull requests using the Ghostpatch workflow.
 ---
 
 # Ghostpatch
 
-## Overview
+## Role
 
-Use the `ghostpatch` CLI for approval-gated open-source contribution work. Ghostpatch scans GitHub issues, scores candidate quality, runs a selected coding agent in a local workspace, stores diff/test evidence, and only publishes issues or PRs after explicit user confirmation.
+Act as the operator for an open-source contribution workflow. Use Ghostpatch to find candidate GitHub issues, choose high-quality work, solve locally in a safe workspace, and raise PRs only after the user approves the exact action.
 
-## Prerequisites
+Ghostpatch is distributed two ways:
 
-- Node.js 22 or newer.
-- GitHub CLI installed and authenticated with `gh auth login`.
-- Optional coding agent CLI configured: `codex` or `claude`.
+- as this Agent Skill from skills.sh
+- as the npm engine package `@sambhram06/ghostpatch`
 
-## Install
+The skill is the primary interface. The npm package is the executable engine.
 
-Prefer the published npm package:
+## Runner
+
+Use the bundled runner when this skill is installed:
 
 ```bash
-npm install -g @sambhram06/ghostpatch
+node skills/ghostpatch/scripts/ghostpatch.mjs --help
 ```
 
-For repository-local use:
+If the relative path is different in the host agent, locate this skill folder and run:
 
 ```bash
-npm install
-npm run build
-node build/src/index.js scan
+node <skill-folder>/scripts/ghostpatch.mjs <args>
 ```
 
-## Workflow
-
-1. Run setup:
+The runner first tries a local `ghostpatch` binary. If it is not available, it falls back to:
 
 ```bash
-ghostpatch setup
+npx --yes @sambhram06/ghostpatch <args>
 ```
 
-2. Scan fixtures or live GitHub:
+Set `GHOSTPATCH_CLI` to force a specific executable.
+
+## Main Workflow
+
+When the user asks to find issues, solve issues, or raise PRs:
+
+1. Check prerequisites:
 
 ```bash
-ghostpatch scan
-ghostpatch scan --live
+gh auth status
+node <skill-folder>/scripts/ghostpatch.mjs --help
 ```
 
-3. Review candidates:
+2. Configure the agent if needed:
 
 ```bash
-ghostpatch review
+node <skill-folder>/scripts/ghostpatch.mjs login codex --command codex
+node <skill-folder>/scripts/ghostpatch.mjs login claude --command claude
 ```
 
-4. During review, inspect the candidate quality, risks, commands, changed files, and post body before choosing any publish action.
-
-## Safety Rules
-
-- Never publish automatically.
-- Confirm that `ghostpatch review` shows no blockers before publishing a PR.
-- Treat duplicate issue/PR warnings as blocking unless the user explicitly asks to continue outside Ghostpatch.
-- Keep live work inside `~/.ghostpatch/workspaces`.
-- Use `draft-only` approval mode when the user wants analysis without publication.
-
-## Useful Commands
+3. Run setup if preferences do not exist or the user wants to change repos/languages:
 
 ```bash
-ghostpatch agents
-ghostpatch login codex --command codex
-ghostpatch login claude --command claude
-ghostpatch run --agent codex --fixture python-fastapi-bug
+node <skill-folder>/scripts/ghostpatch.mjs setup
+```
+
+4. Scan:
+
+```bash
+node <skill-folder>/scripts/ghostpatch.mjs scan --live
+```
+
+5. Review:
+
+```bash
+node <skill-folder>/scripts/ghostpatch.mjs review
+```
+
+6. In review, only choose publish actions after the user confirms the candidate, patch, tests, and post body.
+
+## Agent Behavior
+
+- Prefer `scan --live` for real GitHub work.
+- Use plain `scan` for demos and safe dry runs.
+- Use `review` for all solve and publish actions.
+- Never bypass Ghostpatch's duplicate checks, diff-budget checks, branch checks, test checks, or publication confirmations.
+- If Ghostpatch blocks a PR, report the blocker instead of working around it.
+- If the user asks for full automation, explain that Ghostpatch is intentionally approval-gated before publication.
+
+## What Ghostpatch Shows
+
+During review, Ghostpatch surfaces:
+
+- why the candidate was selected
+- candidate quality score
+- quality risks and safety signals
+- commands that will run
+- changed files
+- validation command and test result
+- diff budget
+- blockers and remaining risk
+- exact issue or PR text before posting
+
+## Common Commands
+
+```bash
+node <skill-folder>/scripts/ghostpatch.mjs agents
+node <skill-folder>/scripts/ghostpatch.mjs scan
+node <skill-folder>/scripts/ghostpatch.mjs scan --live
+node <skill-folder>/scripts/ghostpatch.mjs review
+node <skill-folder>/scripts/ghostpatch.mjs run --agent codex --fixture python-fastapi-bug
 ```
 
 ## Stored Data
@@ -79,3 +117,4 @@ ghostpatch run --agent codex --fixture python-fastapi-bug
 - Scan history: `~/.ghostpatch/reports`
 - Review state: `~/.ghostpatch/review-state`
 - Patch results: `~/.ghostpatch/patch-results`
+- Workspaces: `~/.ghostpatch/workspaces`

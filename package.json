@@ -1,7 +1,7 @@
 {
   "name": "@sambhram06/ghostpatch",
   "version": "0.1.0",
-  "description": "A merge-rate-first dry-run OSS contribution operator.",
+  "description": "An agent-native Ghostpatch skill and CLI for approval-gated OSS GitHub contributions.",
   "license": "MIT",
   "type": "module",
   "main": "build/src/index.js",
@@ -25,6 +25,10 @@
     "codex",
     "skills"
   ],
+  "skill": {
+    "name": "ghostpatch",
+    "path": "skills/ghostpatch"
+  },
   "files": [
     "build/src",
     "skills",
