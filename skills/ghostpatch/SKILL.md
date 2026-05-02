@@ -20,7 +20,7 @@ Use the `ghostpatch` CLI for approval-gated open-source contribution work. Ghost
 Prefer the published npm package:
 
 ```bash
-npm install -g @sambhram1/ghostpatch
+npm install -g @sambhram06/ghostpatch
 ```
 
 For repository-local use:

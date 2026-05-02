@@ -3,7 +3,7 @@
 Ghostpatch is a merge-rate-first open-source contribution operator. It scans candidate GitHub issues, qualifies them for patchability and safety, runs a selected coding agent in an isolated local workspace, stores diff/test evidence, and only publishes issues or pull requests after explicit user approval.
 
 ```bash
-npm install -g @sambhram1/ghostpatch
+npm install -g @sambhram06/ghostpatch
 ghostpatch setup
 ghostpatch scan --live
 ghostpatch review
@@ -26,7 +26,7 @@ Ghostpatch is an early MVP for supervised contribution workflows. It is designed
 From npm:
 
 ```bash
-npm install -g @sambhram1/ghostpatch
+npm install -g @sambhram06/ghostpatch
 ghostpatch setup
 ```
 
@@ -148,7 +148,7 @@ npm login
 npm publish --access public
 ```
 
-The package is published as `@sambhram1/ghostpatch` because the unscoped `ghostpatch` npm name is already taken. It still installs the `ghostpatch` CLI binary. The package includes the compiled CLI under `build/src`, fixture data, docs, the bundled `skills/ghostpatch` Agent Skill, and the MIT license.
+The package is published as `@sambhram06/ghostpatch` because the unscoped `ghostpatch` npm name is already taken. It still installs the `ghostpatch` CLI binary. The package includes the compiled CLI under `build/src`, fixture data, docs, the bundled `skills/ghostpatch` Agent Skill, and the MIT license.
 
 ## Publishing to skills.sh
 
