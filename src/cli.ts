@@ -33,6 +33,7 @@ export interface SetupOptions {
 
 export interface ScanOptions {
   command: "scan";
+  live: boolean;
 }
 
 export interface ReviewOptions {
@@ -50,7 +51,14 @@ export function parseCli(argv: string[]): CliOptions {
     return { command: "help", message: helpText() };
   }
 
-  if (command === "agents" || command === "setup" || command === "scan" || command === "review") {
+  if (command === "scan") {
+    return {
+      command,
+      live: rest.includes("--live")
+    };
+  }
+
+  if (command === "agents" || command === "setup" || command === "review") {
     return { command };
   }
 
@@ -108,7 +116,7 @@ function helpText(): string {
     "Commands:",
     "  ghostpatch run [--agent local|codex|claude] [--fixture slug]",
     "  ghostpatch setup",
-    "  ghostpatch scan",
+    "  ghostpatch scan [--live]",
     "  ghostpatch review",
     "  ghostpatch login <local|codex|claude> [--command path] [--dry-run-command command] [--env ENV_VAR]",
     "  ghostpatch agents",

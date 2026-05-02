@@ -1,5 +1,6 @@
 import { saveAgentConnection } from "../agents/agent-config.js";
 import { createAgentProvider } from "../agents/agent-registry.js";
+import { ensureGitHubAuth } from "../github/github-cli.js";
 import type { CodingAgentName, SupportedLanguage } from "../types.js";
 import {
   type ApprovalMode,
@@ -13,6 +14,7 @@ import {
   divider,
   printKeyValue,
   promptChoice,
+  promptConfirm,
   promptMultiChoice,
   promptText,
   spinner,
@@ -44,6 +46,20 @@ function parseRepos(value: string): string[] {
     .split(",")
     .map((repo) => repo.trim())
     .filter(Boolean);
+}
+
+function parseRepoTestCommands(value: string): Record<string, string> {
+  return Object.fromEntries(
+    value
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .map((item) => {
+        const [repo, ...commandParts] = item.split("=");
+        return [repo.trim(), commandParts.join("=").trim()];
+      })
+      .filter(([repo, command]) => repo && command)
+  );
 }
 
 export async function runSetupWizard(): Promise<void> {
@@ -84,6 +100,11 @@ export async function runSetupWizard(): Promise<void> {
     ? await promptText("Repos, comma-separated owner/name", "")
     : "";
 
+  const testCommandInput = await promptText(
+    "Per-repo test commands, comma-separated owner/name=command",
+    ""
+  );
+
   const approvalMode = await promptChoice<ApprovalMode>("How should Ghostpatch handle actions?", [
     { label: "Always ask before issue or PR", value: "always-ask" },
     { label: "Draft only, never publish", value: "draft-only" }
@@ -106,17 +127,31 @@ export async function runSetupWizard(): Promise<void> {
       languages,
       repoSourceMode,
       manualRepos: parseRepos(manualRepoInput),
+      repoTestCommands: parseRepoTestCommands(testCommandInput),
       approvalMode,
       setupCompletedAt: new Date().toISOString()
     })
   );
+
+  const checkGithub = await promptConfirm("Check GitHub CLI login now?", true);
+  let githubStatus = "not checked";
+  if (checkGithub) {
+    try {
+      await spinner("Checking GitHub CLI auth", async () => ensureGitHubAuth());
+      githubStatus = "ready";
+    } catch {
+      githubStatus = "not logged in - run gh auth login";
+    }
+  }
 
   divider("ready");
   printKeyValue("agent", preferences.agent);
   printKeyValue("languages", preferences.languages.join(", "));
   printKeyValue("repo source", preferences.repoSourceMode);
   printKeyValue("manual repos", preferences.manualRepos.join(", ") || "none");
+  printKeyValue("test overrides", Object.keys(preferences.repoTestCommands).join(", ") || "none");
   printKeyValue("approval", preferences.approvalMode);
   printKeyValue("agent status", `${status.ready ? "ready" : "not ready"} (${status.detail})`);
+  printKeyValue("github", githubStatus);
   console.log(`\n${color("Next:", ansi.bold)} run ${color("ghostpatch scan", ansi.cyan)} then ${color("ghostpatch review", ansi.cyan)}`);
 }

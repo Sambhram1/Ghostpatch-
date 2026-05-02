@@ -10,6 +10,13 @@ function renderRun(run: OpportunityRun): string {
     `Reason codes: ${run.triage.reasonCodes.join(", ")}`
   ];
 
+  if (run.opportunity.quality) {
+    lines.push(`Candidate quality: ${run.opportunity.quality.score} (${run.opportunity.quality.summary})`);
+    lines.push(`Why this candidate: ${run.opportunity.quality.positiveSignals.join("; ") || "no strong positive signals"}`);
+    lines.push(`Quality risks: ${run.opportunity.quality.riskSignals.join("; ") || "none"}`);
+    lines.push(`Safety signals: ${run.opportunity.quality.safetySignals.join("; ") || "none"}`);
+  }
+
   if (run.repro) {
     lines.push(`Repro confirmed: ${run.repro.confirmed}`);
     lines.push(`Validation command: ${run.repro.validationCommand}`);

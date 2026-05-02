@@ -1,80 +1,184 @@
 # Ghostpatch
 
-Ghostpatch is a merge-rate-first open-source contribution operator. This repository currently contains a dry-run MVP that evaluates fixture repositories, reproduces candidate issues in a simulated pipeline, chooses between `direct-pr`, `issue-first`, or `skip`, and emits contribution artifacts without touching live GitHub.
-
-The intended user flow is low-friction:
+Ghostpatch is a merge-rate-first open-source contribution operator. It scans candidate GitHub issues, qualifies them for patchability and safety, runs a selected coding agent in an isolated local workspace, stores diff/test evidence, and only publishes issues or pull requests after explicit user approval.
 
 ```bash
-npm install -g ghostpatch
+npm install -g @sambhram1/ghostpatch
 ghostpatch setup
-ghostpatch scan
+ghostpatch scan --live
 ghostpatch review
 ```
 
-`setup` opens a fully terminal-based wizard with animated progress, asks which coding agent to use, stores language preferences, records manual repos or auto-search intent, and keeps publication gated behind user decisions.
+## Status
 
-## MVP Scope
+Ghostpatch is an early MVP for supervised contribution workflows. It is designed to keep live GitHub side effects behind review prompts, not to publish autonomously.
 
-- Public Python and TypeScript repositories only
-- Fixture-backed discovery instead of live GitHub crawling
-- Agent-selectable patch planning with `local`, `codex`, and `claude`
-- Deterministic triage, reproduction, review, and social decisioning
-- Human-readable dry-run report output
+## Requirements
 
-## Local Commands
+- Node.js 22 or newer
+- Git
+- GitHub CLI for live mode
+- `gh auth login` before live scanning or publishing
+- Optional: Codex CLI or Claude CLI for agent-backed solving
+
+## Install
+
+From npm:
 
 ```bash
+npm install -g @sambhram1/ghostpatch
+ghostpatch setup
+```
+
+From source:
+
+```bash
+git clone https://github.com/Sambhram1/Ghostpatch-.git
+cd Ghostpatch-
 npm install
 npm run build
-npm test
-npm run dev
-node build/src/index.js run --fixture python-fastapi-bug
+node build/src/index.js scan
 ```
 
 ## CLI Usage
 
-After publishing to npm, users can install and run Ghostpatch like this:
-
 ```bash
-npm install -g ghostpatch
 ghostpatch setup
 ghostpatch scan
+ghostpatch scan --live
 ghostpatch review
 ghostpatch agents
 ghostpatch login codex --command codex
 ghostpatch login claude --command claude
+ghostpatch login codex --dry-run-command "codex exec --sandbox read-only {{prompt}}"
 ghostpatch run --agent codex --fixture python-fastapi-bug
 ```
 
-`login` does not store API secrets. It registers how Ghostpatch should reach a coding agent, either through a CLI command, a dry-run command, or an environment variable:
+`setup` opens a terminal wizard that stores the preferred agent, languages, repository source mode, approval mode, manual repositories, and optional per-repository validation commands.
 
-```bash
-ghostpatch login codex --command codex
-ghostpatch login claude --env ANTHROPIC_API_KEY
-ghostpatch login codex --dry-run-command "codex exec --sandbox read-only {{prompt}}"
+Per-repository validation commands use this form:
+
+```text
+owner/name=npm test -- config, other/repo=pytest tests/test_loader.py
 ```
 
-Configuration is stored in `~/.ghostpatch/config.json`. Set `GHOSTPATCH_HOME` to use a different config directory.
+Configuration is stored under `~/.ghostpatch`. Set `GHOSTPATCH_HOME` to use a different directory.
+
+## Live GitHub Mode
+
+`ghostpatch scan --live` uses GitHub CLI to:
+
+- check authentication
+- inspect configured repositories
+- list open issues
+- qualify candidates by labels, reproduction detail, concrete broken behavior, tests, contribution-guide signals, bot/AI restrictions, and license metadata
+- save the latest report and durable scan history
+
+`ghostpatch review` lets the user:
+
+- compare candidate quality
+- resume interrupted reviews
+- inspect issue and PR drafts
+- reject candidates with a durable reason
+- ask the configured agent to solve locally
+- review changed files, diff budget, test output, blockers, and remaining risk
+- publish an issue or PR only after confirmation
+
+## Safety Model
+
+Ghostpatch blocks or warns before publication when it detects:
+
+- no changed files
+- failed agent execution
+- failed validation command
+- over-budget diff
+- secret-like content in the diff
+- generated or sensitive files that need manual review
+- dirty workspace before solving
+- unexpected branch before publishing
+- existing remote branch
+- possible duplicate issue or pull request
+- draft-only approval mode
+
+Live patching happens under `~/.ghostpatch/workspaces`, not in the Ghostpatch source repository.
+
+## Stored Data
+
+- Preferences: `~/.ghostpatch/preferences.json`
+- Agent config: `~/.ghostpatch/config.json`
+- Latest report: `~/.ghostpatch/latest-report.json`
+- Scan history: `~/.ghostpatch/reports`
+- Review state: `~/.ghostpatch/review-state`
+- Patch results: `~/.ghostpatch/patch-results`
+- Workspaces: `~/.ghostpatch/workspaces`
 
 ## Agent Model
 
-Ghostpatch keeps GitHub side effects centralized in the orchestrator. Coding agents are worker providers: they can generate patch plans and review artifacts, but they do not publish issues or PRs directly.
+Ghostpatch keeps GitHub side effects centralized in its review session. Coding agents are patch workers: they can generate plans and local edits, but they do not create issues, push branches, or open pull requests directly.
 
-External providers run in dry-run mode. Ghostpatch passes a prompt asking the agent to return a patch plan only, captures stdout/stderr/exit code, and blocks the contribution if the agent command fails. Default commands are:
+Default external commands:
 
 ```bash
 codex exec --sandbox read-only --cd <cwd> <prompt>
 claude -p --permission-mode default <prompt>
 ```
 
-## Review Flow
+Live solve mode invokes the configured agent in a workspace-write context against a cloned repository and then runs the candidate validation command.
 
-`ghostpatch scan` creates a latest report under `~/.ghostpatch/latest-report.json`. `ghostpatch review` opens that report in the terminal and shows one candidate at a time. The user can show an issue draft, ask the agent to solve next, show a direct PR draft, skip, or quit.
+## Development
 
-For now, review actions are intentionally non-publishing. The next production step is connecting those choices to GitHub issue and PR creation behind explicit approval.
+```bash
+npm install
+npm run build
+npm test
+npm run lint
+npm pack --dry-run --cache .npm-cache
+node build/src/index.js run --fixture python-fastapi-bug
+```
 
-## Next
+## Publishing to npm
 
-- Replace fixtures with live GitHub repo scouting
-- Add persistent run storage and repo cooldowns
-- Add operator approval gates before issue or PR publication
+Before publishing:
+
+```bash
+npm test
+npm run lint
+npm pack --dry-run --cache .npm-cache
+npm login
+npm publish --access public
+```
+
+The package is published as `@sambhram1/ghostpatch` because the unscoped `ghostpatch` npm name is already taken. It still installs the `ghostpatch` CLI binary. The package includes the compiled CLI under `build/src`, fixture data, docs, the bundled `skills/ghostpatch` Agent Skill, and the MIT license.
+
+## Publishing to skills.sh
+
+This repository includes an Agent Skill at:
+
+```text
+skills/ghostpatch/SKILL.md
+```
+
+Validate the skill before publishing:
+
+```bash
+python C:\Users\sambh\.codex\skills\.system\skill-creator\scripts\quick_validate.py skills\ghostpatch
+gh skill publish --dry-run
+```
+
+`gh skill publish` requires a GitHub CLI build with the `gh skill` command available. If `gh skill` is not listed in `gh --help`, update GitHub CLI before running the dry run.
+
+If validation passes, publish through GitHub CLI:
+
+```bash
+gh skill publish --tag v0.1.0
+```
+
+After the GitHub release is published, users can install the skill with:
+
+```bash
+npx skills add https://github.com/Sambhram1/Ghostpatch- --skill ghostpatch
+```
+
+## License
+
+MIT

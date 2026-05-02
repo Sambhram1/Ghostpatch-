@@ -11,6 +11,7 @@ export interface GhostpatchPreferences {
   languages: SupportedLanguage[];
   repoSourceMode: RepoSourceMode;
   manualRepos: string[];
+  repoTestCommands: Record<string, string>;
   approvalMode: ApprovalMode;
   setupCompletedAt?: string;
 }
@@ -20,6 +21,7 @@ export const defaultPreferences: GhostpatchPreferences = {
   languages: ["python", "typescript"],
   repoSourceMode: "manual",
   manualRepos: [],
+  repoTestCommands: {},
   approvalMode: "always-ask"
 };
 

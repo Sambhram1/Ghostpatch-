@@ -1,6 +1,7 @@
 import { listAgentConnections } from "../agents/agent-config.js";
 import { createAgentProvider } from "../agents/agent-registry.js";
 import { loadFixtures } from "../fixtures/load-fixtures.js";
+import { scanGitHubIssues } from "../github/live-scan.js";
 import { runGhostpatch } from "../pipeline/orchestrator.js";
 import { saveLatestReport } from "../reports/report-store.js";
 import { renderReport } from "../report/render-report.js";
@@ -38,9 +39,25 @@ function applyManualRepos(opportunities: Opportunity[], manualRepos: string[]): 
   return matched.length > 0 ? matched : opportunities;
 }
 
-export async function runScanSession(): Promise<void> {
+function applyTestCommandOverrides(
+  opportunities: Opportunity[],
+  overrides: Record<string, string>
+): Opportunity[] {
+  return opportunities.map((opportunity) => ({
+    ...opportunity,
+    validationCommand: overrides[opportunity.repoProfile.repo] ?? opportunity.validationCommand
+  }));
+}
+
+export interface ScanSessionOptions {
+  live?: boolean;
+}
+
+export async function runScanSession(options: ScanSessionOptions = {}): Promise<void> {
   brand();
-  await typeLine("Scanning candidate repos with your saved Ghostpatch preferences.");
+  await typeLine(options.live
+    ? "Scanning live GitHub issues with your saved Ghostpatch preferences."
+    : "Scanning candidate repos with your saved Ghostpatch preferences.");
   divider("scan");
 
   const preferences = await loadPreferences();
@@ -53,13 +70,34 @@ export async function runScanSession(): Promise<void> {
   printKeyValue("languages", effectivePreferences.languages.join(", "));
   printKeyValue("repo source", effectivePreferences.repoSourceMode);
 
-  const opportunities = await spinner("Loading candidate repos", async () => loadFixtures());
+  const opportunities = await spinner(options.live ? "Discovering GitHub issues" : "Loading candidate repos", async () => {
+    if (!options.live) {
+      return loadFixtures();
+    }
+
+    const repos = effectivePreferences.repoSourceMode === "auto"
+      ? []
+      : effectivePreferences.manualRepos;
+    const autoSearch = effectivePreferences.repoSourceMode === "auto"
+      || effectivePreferences.repoSourceMode === "both";
+
+    if (repos.length === 0 && !autoSearch) {
+      throw new Error("Live scan needs manual repos or auto-search. Run ghostpatch setup first.");
+    }
+
+    return scanGitHubIssues({
+      repos,
+      languages: effectivePreferences.languages,
+      autoSearch
+    });
+  });
   const filtered = applyManualRepos(
     filterByPreferences(opportunities, effectivePreferences.languages),
     effectivePreferences.manualRepos
   );
+  const withTestOverrides = applyTestCommandOverrides(filtered, effectivePreferences.repoTestCommands);
   const report = await spinner("Running Ghostpatch dry-run analysis", async () =>
-    runGhostpatch(filtered, undefined, provider)
+    runGhostpatch(withTestOverrides, undefined, provider)
   );
 
   await spinner("Saving latest report", async () => saveLatestReport(report));

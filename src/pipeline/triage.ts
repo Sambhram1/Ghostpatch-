@@ -50,6 +50,10 @@ export function triage(
     reasonCodes.push("bot-friendly");
   }
 
+  if (opportunity.quality) {
+    score += (opportunity.quality.score - 0.5) * 0.4;
+  }
+
   const proceed = score >= config.minConfidenceToProceed;
   const modeHint =
     opportunity.ambiguityRisk <= config.maxAmbiguityRiskForDirectPr

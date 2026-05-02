@@ -49,6 +49,15 @@ export interface RepositoryProfile {
   hasTests: boolean;
   antiBotPolicy: boolean;
   contributionGuide: string;
+  licenseName?: string;
+}
+
+export interface CandidateQuality {
+  score: number;
+  summary: string;
+  positiveSignals: string[];
+  riskSignals: string[];
+  safetySignals: string[];
 }
 
 export interface Opportunity {
@@ -66,6 +75,11 @@ export interface Opportunity {
   ambiguityRisk: number;
   prHint?: string;
   issueHint?: string;
+  sourceType?: "fixture" | "github";
+  issueNumber?: number;
+  issueUrl?: string;
+  repoUrl?: string;
+  quality?: CandidateQuality;
 }
 
 export interface TriageResult {

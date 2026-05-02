@@ -18,6 +18,7 @@ export async function testPreferencesRoundTrip(): Promise<void> {
       languages: ["python"],
       repoSourceMode: "both",
       manualRepos: ["owner/repo"],
+      repoTestCommands: {},
       approvalMode: "always-ask",
       setupCompletedAt: "test"
     });
@@ -26,6 +27,7 @@ export async function testPreferencesRoundTrip(): Promise<void> {
     assert.equal(loaded.agent, "codex");
     assert.deepEqual(loaded.languages, ["python"]);
     assert.deepEqual(loaded.manualRepos, ["owner/repo"]);
+    assert.deepEqual(loaded.repoTestCommands, {});
   } finally {
     if (previousHome === undefined) {
       delete process.env.GHOSTPATCH_HOME;

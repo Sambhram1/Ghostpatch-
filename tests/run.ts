@@ -2,7 +2,21 @@ import { testOrchestratorReport } from "./orchestrator.test.js";
 import { testDirectPrArtifact, testIssueArtifact } from "./social.test.js";
 import { testLoginParsing, testRunAgentParsing } from "./cli.test.js";
 import { testTerminalCommandParsing } from "./cli-commands.test.js";
+import {
+  testGitHubIssueQualification,
+  testGitHubIssueQualificationRisks,
+  testIssueTransformCarriesQualitySignals
+} from "./github-quality.test.js";
+import { testGitHubIssueTransform } from "./github-transform.test.js";
+import {
+  testPatchPublishBlockers,
+  testPatchSafetyReview
+} from "./live-review.test.js";
 import { testPreferencesRoundTrip } from "./preferences.test.js";
+import {
+  testReportHistoryRoundTrip,
+  testReviewStateRoundTrip
+} from "./report-history.test.js";
 import {
   testDirectPrTriage,
   testIssueFirstTriage,
@@ -19,7 +33,15 @@ const checks: Array<[string, () => Promise<void>]> = [
   ["CLI run agent parsing", testRunAgentParsing],
   ["CLI login parsing", testLoginParsing],
   ["CLI terminal command parsing", testTerminalCommandParsing],
-  ["preferences round trip", testPreferencesRoundTrip]
+  ["preferences round trip", testPreferencesRoundTrip],
+  ["GitHub issue transform", testGitHubIssueTransform],
+  ["GitHub issue qualification", testGitHubIssueQualification],
+  ["GitHub issue qualification risks", testGitHubIssueQualificationRisks],
+  ["GitHub issue transform quality signals", testIssueTransformCarriesQualitySignals],
+  ["live review PR blockers", testPatchPublishBlockers],
+  ["live patch safety review", testPatchSafetyReview],
+  ["report history round trip", testReportHistoryRoundTrip],
+  ["review state round trip", testReviewStateRoundTrip]
 ];
 
 async function main(): Promise<void> {

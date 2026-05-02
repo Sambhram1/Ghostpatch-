@@ -1,16 +1,36 @@
 {
-  "name": "ghostpatch",
+  "name": "@sambhram1/ghostpatch",
   "version": "0.1.0",
   "description": "A merge-rate-first dry-run OSS contribution operator.",
+  "license": "MIT",
   "type": "module",
   "main": "build/src/index.js",
   "bin": {
     "ghostpatch": "build/src/index.js"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Sambhram1/Ghostpatch-.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Sambhram1/Ghostpatch-/issues"
+  },
+  "homepage": "https://github.com/Sambhram1/Ghostpatch-#readme",
+  "keywords": [
+    "github",
+    "oss",
+    "automation",
+    "agent",
+    "cli",
+    "codex",
+    "skills"
+  ],
   "files": [
     "build/src",
+    "skills",
     "src/fixtures/repos",
     "README.md",
+    "LICENSE",
     "docs/superpowers/specs",
     "docs/superpowers/plans"
   ],

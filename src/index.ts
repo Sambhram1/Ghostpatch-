@@ -37,7 +37,7 @@ async function main(): Promise<void> {
   }
 
   if (options.command === "scan") {
-    await runScanSession();
+    await runScanSession({ live: options.live });
     return;
   }
 
