@@ -6,125 +6,176 @@ license: MIT
 
 # Ghostpatch
 
-## Role
+Ghostpatch helps an agent do supervised open-source contribution work end to end.
 
-Act as the operator for an open-source contribution workflow. Use Ghostpatch to find candidate GitHub issues, choose high-quality work, solve locally in a safe workspace, and raise PRs only after the user approves the exact action.
+It can:
 
-Ghostpatch is distributed two ways:
+- find GitHub issues worth solving
+- qualify candidates before spending time on them
+- solve locally with Codex, Claude, or a local deterministic agent
+- run validation commands
+- create or reuse your fork for live contribution work
+- prepare or publish issues and PRs with safety checks
+- remember prior PR context for CI failures and maintainer follow-up
 
-- as this Agent Skill from skills.sh
-- as the npm engine package `@sambhram06/ghostpatch`
+The skill is the main interface. The npm package `@sambhram06/ghostpatch` is the engine behind it.
 
-The skill is the primary interface. The npm package is the executable engine.
+## Who It Is For
 
-## Runner
+Use Ghostpatch when you want:
 
-Use the bundled runner when this skill is installed:
+- supervised help contributing to open-source repositories
+- a repeatable scan -> review -> solve -> publish workflow
+- explicit autonomous mode only when you ask for it
+
+## Requirements
+
+- Node.js 22 or newer
+- Git
+- GitHub CLI
+- `GH_TOKEN` or `GITHUB_TOKEN` for live GitHub scan and publish
+- Optional: Codex CLI or Claude CLI
+
+## Install
+
+Install the skill from skills.sh:
 
 ```bash
-node skills/ghostpatch/scripts/ghostpatch.mjs --help
+npx skills add https://github.com/Sambhram1/Ghostpatch- --skill ghostpatch
 ```
 
-If the relative path is different in the host agent, locate this skill folder and run:
+Optional but faster engine install:
 
 ```bash
-node <skill-folder>/scripts/ghostpatch.mjs <args>
+npm install -g @sambhram06/ghostpatch
 ```
 
-The runner first tries a local `ghostpatch` binary. If it is not available, it falls back to:
+## First Run
+
+The shortest successful path is:
+
+```bash
+ghostpatch setup
+ghostpatch scan --live
+ghostpatch review
+```
+
+What happens in setup:
+
+- choose your agent: `local`, `codex`, or `claude`
+- choose languages and repositories
+- choose whether to use `GH_TOKEN` or `GITHUB_TOKEN`
+- validate the token if it is already present
+- save only the variable name, not the token itself
+
+If the skill runner path is needed directly:
+
+```bash
+node <skill-folder>/scripts/ghostpatch.mjs setup
+node <skill-folder>/scripts/ghostpatch.mjs scan --live
+node <skill-folder>/scripts/ghostpatch.mjs review
+```
+
+## Normal Workflow
+
+Ghostpatch's default workflow is supervised:
+
+1. scan for candidates
+2. review the ranked opportunities
+3. ask the configured agent to solve locally
+4. run validation
+5. inspect blockers, warnings, and generated drafts
+6. publish only after explicit confirmation
+
+For live solve work, Ghostpatch:
+
+- creates or reuses your GitHub fork
+- uses your fork as `origin`
+- keeps the original repository as `upstream`
+- works in a local workspace under `~/.ghostpatch/workspaces`
+
+If CI fails later or maintainers ask for changes, Ghostpatch can resume from stored PR memory instead of rebuilding context from scratch.
+
+## GitHub Auth
+
+Ghostpatch uses token-first GitHub auth.
+
+Set one of these before live scan or publish:
+
+```powershell
+$env:GH_TOKEN="your_token"
+```
+
+or:
+
+```powershell
+$env:GITHUB_TOKEN="your_token"
+```
+
+`ghostpatch login` is only for configuring the coding agent command. It does not configure GitHub auth.
+
+## Safety Model
+
+Ghostpatch is supervised by default. It is not a blind PR bot.
+
+Before publication, Ghostpatch checks for:
+
+- no changed files
+- failed agent execution
+- failed validation command
+- over-budget diffs
+- duplicate issues or PRs
+- dirty workspaces
+- unexpected branch state
+- generated or sensitive files that need review
+
+During review, Ghostpatch shows:
+
+- why the candidate was selected
+- candidate quality score
+- quality risks and safety signals
+- changed files
+- validation results
+- blockers and remaining risk
+- exact issue or PR text before posting
+
+## Autonomous Mode
+
+Ghostpatch also has an explicit autonomous extension:
+
+```bash
+ghostpatch surge --max-prs 1 --max-runtime-minutes 30
+```
+
+Use `ghostpatch surge` only when the user explicitly asks for continuous find -> solve -> publish operation.
+
+Surge is not the default workflow. It still applies hard limits and quality gates before publishing.
+
+## Common Commands
+
+```bash
+ghostpatch setup
+ghostpatch agents
+ghostpatch scan
+ghostpatch scan --live
+ghostpatch review
+ghostpatch surge --max-prs 1 --max-runtime-minutes 30
+ghostpatch run --agent codex --fixture python-fastapi-bug
+```
+
+If the skill folder must be invoked directly:
+
+```bash
+node <skill-folder>/scripts/ghostpatch.mjs --help
+```
+
+The bundled runner first tries a local `ghostpatch` binary. If it is not available, it falls back to:
 
 ```bash
 npx --yes @sambhram06/ghostpatch <args>
 ```
 
 Set `GHOSTPATCH_CLI` to force a specific executable.
-
-## Main Workflow
-
-When the user asks to find issues, solve issues, or raise PRs:
-
-1. Check prerequisites:
-
-```bash
-node <skill-folder>/scripts/ghostpatch.mjs --help
-```
-
-Confirm the configured GitHub token variable is set:
-
-```powershell
-$env:GH_TOKEN
-```
-
-or:
-
-```powershell
-$env:GITHUB_TOKEN
-```
-
-2. Configure the agent if needed:
-
-```bash
-node <skill-folder>/scripts/ghostpatch.mjs login codex --command codex
-node <skill-folder>/scripts/ghostpatch.mjs login claude --command claude
-```
-
-3. Run setup if preferences do not exist or the user wants to change repos/languages:
-
-```bash
-node <skill-folder>/scripts/ghostpatch.mjs setup
-```
-
-`setup` asks whether Ghostpatch should use `GH_TOKEN` or `GITHUB_TOKEN`, validates it when present, and saves only the variable name.
-
-4. Scan:
-
-```bash
-node <skill-folder>/scripts/ghostpatch.mjs scan --live
-```
-
-5. Review:
-
-```bash
-node <skill-folder>/scripts/ghostpatch.mjs review
-```
-
-6. For live solve work, Ghostpatch creates or reuses the authenticated user's fork, uses that fork as `origin`, keeps the original repository as `upstream`, and then works in the local workspace.
-
-7. In review, only choose publish actions after the user confirms the candidate, patch, tests, and post body.
-
-## Agent Behavior
-
-- Prefer `scan --live` for real GitHub work.
-- Use plain `scan` for demos and safe dry runs.
-- Use `review` for all solve and publish actions in the normal workflow.
-- Never bypass Ghostpatch's duplicate checks, diff-budget checks, branch checks, test checks, or publication confirmations.
-- If Ghostpatch blocks a PR, report the blocker instead of working around it.
-- If the user explicitly asks for autonomous continuous operation, use `ghostpatch surge`. Do not invoke that mode unless the user asks for it.
-
-## What Ghostpatch Shows
-
-During review, Ghostpatch surfaces:
-
-- why the candidate was selected
-- candidate quality score
-- quality risks and safety signals
-- commands that will run
-- changed files
-- validation command and test result
-- diff budget
-- blockers and remaining risk
-- exact issue or PR text before posting
-
-## Common Commands
-
-```bash
-node <skill-folder>/scripts/ghostpatch.mjs agents
-node <skill-folder>/scripts/ghostpatch.mjs scan
-node <skill-folder>/scripts/ghostpatch.mjs scan --live
-node <skill-folder>/scripts/ghostpatch.mjs surge --max-prs 1 --max-runtime-minutes 30
-node <skill-folder>/scripts/ghostpatch.mjs review
-node <skill-folder>/scripts/ghostpatch.mjs run --agent codex --fixture python-fastapi-bug
-```
 
 ## Stored Data
 
@@ -137,3 +188,12 @@ node <skill-folder>/scripts/ghostpatch.mjs run --agent codex --fixture python-fa
 - PR memory: `~/.ghostpatch/pr-memory`
 - Surge runs: `~/.ghostpatch/surge`
 - Workspaces: `~/.ghostpatch/workspaces`
+
+## Agent Notes
+
+- Prefer `scan --live` for real GitHub work.
+- Use plain `scan` for demos and safe dry runs.
+- Use `review` for normal solve and publish actions.
+- Never bypass Ghostpatch checks for duplicates, diff budgets, branches, tests, or publication confirmation.
+- If Ghostpatch blocks a PR, report the blocker instead of working around it.
+- Only use `ghostpatch surge` when the user explicitly asks for autonomous continuous operation.

@@ -1,6 +1,6 @@
 # Ghostpatch
 
-Ghostpatch is an agent-native skill for Codex, Claude Code, and other coding agents. It helps an agent find open-source GitHub issues, qualify good candidates, solve them locally, review the diff and tests, and raise a pull request only after user approval.
+Ghostpatch is an agent-native skill for Codex, Claude Code, and other coding agents. It helps an agent find GitHub issues worth solving, qualify the best candidates, solve them locally, validate the patch, and publish issues or pull requests with clear safety checks.
 
 The main product is the Agent Skill:
 
@@ -36,6 +36,15 @@ Ghostpatch gives agents a supervised open-source contribution workflow:
 - publish issues or PRs only after explicit user confirmation
 
 Ghostpatch is supervised by default. Autonomous publishing exists only in the explicit `ghostpatch surge` extension mode.
+
+## Who It Is For
+
+Ghostpatch is for users who want:
+
+- supervised help contributing to open source
+- a repeatable scan -> review -> solve -> publish flow
+- stored PR memory for CI and maintainer follow-up
+- autonomous mode only when explicitly invoked
 
 ## Install as a Skill
 
@@ -100,6 +109,14 @@ setx GITHUB_TOKEN "your_token"
 
 ## First Run
 
+The shortest successful path is:
+
+```bash
+ghostpatch setup
+ghostpatch scan --live
+ghostpatch review
+```
+
 Run setup once:
 
 ```bash
@@ -148,6 +165,13 @@ The review command is where solving and publishing happen. It can:
 - create issues or PRs only after confirmation
 
 When you explicitly want continuous autonomous operation, use `ghostpatch surge`. That mode keeps normal review unchanged and only runs when directly invoked.
+
+For live solve work, Ghostpatch:
+
+- creates or reuses the authenticated user's fork
+- uses your fork as `origin`
+- keeps the original repo as `upstream`
+- stores PR memory so follow-up work can resume after CI or maintainer feedback
 
 ## CLI Commands
 
@@ -203,6 +227,18 @@ In `ghostpatch surge`, Ghostpatch additionally enforces:
 
 Live patching happens under `~/.ghostpatch/workspaces`, not in the Ghostpatch source repository.
 
+During review, Ghostpatch surfaces:
+
+- why the candidate was selected
+- candidate quality score
+- quality risks and safety signals
+- commands that will run
+- changed files
+- validation command and test result
+- diff budget
+- blockers and remaining risk
+- exact issue or PR text before posting
+
 ## Stored Data
 
 - Preferences: `~/.ghostpatch/preferences.json`
@@ -242,7 +278,7 @@ Publish the skill from GitHub when your GitHub CLI supports `gh skill`:
 
 ```bash
 gh skill publish --dry-run
-gh skill publish --tag v0.1.0
+gh skill publish --tag v0.1.3
 ```
 
 The package name is `@sambhram06/ghostpatch` because the unscoped `ghostpatch` npm name is already taken. The CLI binary remains `ghostpatch`.
