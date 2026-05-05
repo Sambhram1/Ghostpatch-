@@ -1,6 +1,6 @@
 {
   "name": "@sambhram06/ghostpatch",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "An agent-native Ghostpatch skill and CLI for approval-gated OSS GitHub contributions.",
   "license": "MIT",
   "type": "module",

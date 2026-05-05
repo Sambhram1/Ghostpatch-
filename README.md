@@ -278,7 +278,7 @@ Publish the skill from GitHub when your GitHub CLI supports `gh skill`:
 
 ```bash
 gh skill publish --dry-run
-gh skill publish --tag v0.1.3
+gh skill publish --tag v0.1.4
 ```
 
 The package name is `@sambhram06/ghostpatch` because the unscoped `ghostpatch` npm name is already taken. The CLI binary remains `ghostpatch`.
