@@ -9,22 +9,28 @@ import { defaultConfig } from "../config.js";
 import { runCommand } from "../process/command.js";
 import { loadPreferences } from "../preferences/preferences-store.js";
 import type { Opportunity } from "../types.js";
+import { ensureUserFork } from "../github/github-cli.js";
 import {
   changedFiles,
-  cloneOrUpdateRepo,
   createBranch,
   diffStat,
-  ensureCleanWorkspace,
-  fullDiff
+  fullDiff,
+  prepareForkedWorkspace
 } from "../workspace/workspace-manager.js";
 import { savePatchResult, type LivePatchResult } from "./patch-result-store.js";
 import { countDiffLines } from "./safety.js";
+import {
+  buildInitialPrMemory,
+  loadPrMemoryBySlug,
+  mergeSolvedPrMemory,
+  savePrMemory
+} from "../memory/pr-memory-store.js";
 
 function branchName(slug: string): string {
   return `ghostpatch/${slug}`.slice(0, 80);
 }
 
-function solvePrompt(opportunity: Opportunity): string {
+function solvePrompt(opportunity: Opportunity, resumeContext?: string): string {
   return [
     "You are running inside Ghostpatch live solve mode.",
     "Edit files only in this cloned repository.",
@@ -37,16 +43,22 @@ function solvePrompt(opportunity: Opportunity): string {
     `Expected: ${opportunity.expectedBehavior}`,
     `Actual: ${opportunity.actualBehavior}`,
     `Validation command: ${opportunity.validationCommand}`,
+    resumeContext ? "Resume context:" : "",
+    resumeContext ?? "",
     "",
     "After editing, summarize what changed and what tests should run."
   ].filter(Boolean).join("\n");
 }
 
-async function agentCommand(opportunity: Opportunity, repoDir: string): Promise<{ command: string; args: string[]; shell: boolean }> {
+async function agentCommand(
+  opportunity: Opportunity,
+  repoDir: string,
+  resumeContext?: string
+): Promise<{ command: string; args: string[]; shell: boolean }> {
   const preferences = await loadPreferences();
   const connections = await listAgentConnections();
   const connection = connections.find((item) => item.agent === preferences.agent);
-  const prompt = solvePrompt(opportunity);
+  const prompt = solvePrompt(opportunity, resumeContext);
 
   if (preferences.agent === "codex") {
     const command = connection?.command ?? "codex";
@@ -93,13 +105,17 @@ function commandPreview(command: string, args: string[]): string {
   return [command, ...args].join(" ");
 }
 
-export async function solveOpportunity(opportunity: Opportunity): Promise<LivePatchResult> {
-  const repoDir = await cloneOrUpdateRepo(opportunity.repoProfile.repo);
-  await ensureCleanWorkspace(repoDir);
+async function executeSolve(
+  opportunity: Opportunity,
+  resumeContext?: string
+): Promise<LivePatchResult> {
+  const fork = await ensureUserFork(opportunity.repoProfile.repo);
+  const workspace = await prepareForkedWorkspace(opportunity.repoProfile.repo, fork.forkRepo);
+  const repoDir = workspace.repoDir;
   const branch = branchName(opportunity.slug);
   await createBranch(repoDir, branch);
 
-  const command = await agentCommand(opportunity, repoDir);
+  const command = await agentCommand(opportunity, repoDir, resumeContext);
   const agent = await invokeAgentCommand(command, 240000);
   const files = await changedFiles(repoDir);
   const stat = await diffStat(repoDir);
@@ -129,12 +145,17 @@ export async function solveOpportunity(opportunity: Opportunity): Promise<LivePa
   const result: LivePatchResult = {
     slug: opportunity.slug,
     repo: opportunity.repoProfile.repo,
+    forkRepo: workspace.originRepo,
+    upstreamRepo: workspace.upstreamRepo,
+    githubLogin: fork.login,
     repoDir,
     branch,
     title: social.prTitle ?? patch.patchTitle,
     body: social.prBody ?? `Fixes ${opportunity.issueUrl ?? opportunity.title}`,
     commandLog: [
-      `clone/update: gh repo clone ${opportunity.repoProfile.repo} ${repoDir}`,
+      `${fork.created ? "fork" : "fork reuse"}: ${fork.forkRepo}`,
+      `clone/update: gh repo clone ${workspace.originRepo} ${repoDir}`,
+      `remotes: origin=${workspace.originRepo}, upstream=${workspace.upstreamRepo}`,
       `branch: git checkout -B ${branch}`,
       `agent: ${agentPreview}`,
       `validation: ${testPreview}`
@@ -159,7 +180,20 @@ export async function solveOpportunity(opportunity: Opportunity): Promise<LivePa
   };
 
   await savePatchResult(result);
+  const existingMemory = await loadPrMemoryBySlug(opportunity.slug);
+  await savePrMemory(mergeSolvedPrMemory(existingMemory, opportunity, result));
   return result;
+}
+
+export async function solveOpportunity(opportunity: Opportunity): Promise<LivePatchResult> {
+  return executeSolve(opportunity);
+}
+
+export async function solveOpportunityFromMemory(
+  opportunity: Opportunity,
+  resumeContext: string
+): Promise<LivePatchResult> {
+  return executeSolve(opportunity, resumeContext);
 }
 
 function testCommand(opportunity: Opportunity): [string, string[]] {

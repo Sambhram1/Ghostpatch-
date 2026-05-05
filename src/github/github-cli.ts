@@ -1,5 +1,8 @@
 import { runCommand, requireSuccess } from "../process/command.js";
+import type { CommandResult } from "../process/command.js";
 import type { CandidateQuality, Opportunity, SupportedLanguage } from "../types.js";
+import { requireGitHubToken } from "./github-auth.js";
+import type { GitHubTokenEnvVar } from "../preferences/preferences-store.js";
 
 export interface GitHubIssue {
   number: number;
@@ -42,6 +45,34 @@ export interface GitHubSearchMatch {
   headRefName?: string;
 }
 
+export interface GitHubPullRequestComment {
+  id: number;
+  body: string;
+  created_at: string;
+  html_url?: string;
+}
+
+export interface GitHubPullRequestReview {
+  id: number;
+  body?: string;
+  state: string;
+  submitted_at?: string;
+  html_url?: string;
+}
+
+export interface GitHubCheckSummary {
+  conclusion?: string | null;
+  status?: string | null;
+  name?: string;
+  html_url?: string | null;
+}
+
+type CommandRunner = (
+  command: string,
+  args: string[],
+  options?: { cwd?: string; timeoutMs?: number; input?: string }
+) => Promise<CommandResult>;
+
 function toSupportedLanguage(value: string | undefined): SupportedLanguage {
   const normalized = value?.toLowerCase();
   if (normalized === "python") {
@@ -55,9 +86,83 @@ function slugify(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 }
 
-export async function ensureGitHubAuth(): Promise<void> {
-  const result = await runCommand("gh", ["auth", "status"], { timeoutMs: 30000 });
-  requireSuccess(result, "GitHub authentication check");
+export async function ensureGitHubAuth(envVar: GitHubTokenEnvVar = "GH_TOKEN"): Promise<void> {
+  await requireGitHubToken(envVar);
+}
+
+export function forkRepoName(login: string, upstreamRepo: string): string {
+  const [, repoName] = upstreamRepo.split("/");
+  if (!repoName) {
+    throw new Error(`Invalid upstream repo: ${upstreamRepo}`);
+  }
+
+  return `${login}/${repoName}`;
+}
+
+export function buildCreatePullRequestArgs(
+  upstreamRepo: string,
+  title: string,
+  body: string
+): string[] {
+  return [
+    "pr",
+    "create",
+    "--repo",
+    upstreamRepo,
+    "--title",
+    title,
+    "--body",
+    body
+  ];
+}
+
+export function parsePullRequestNumber(prUrl: string): number | undefined {
+  const match = prUrl.match(/\/pull\/(\d+)(?:\/|$)/);
+  if (!match) {
+    return undefined;
+  }
+
+  return Number(match[1]);
+}
+
+export async function getAuthenticatedGitHubLogin(
+  runner: CommandRunner = runCommand
+): Promise<string> {
+  const result = await runner("gh", ["api", "user", "--jq", ".login"], { timeoutMs: 30000 });
+  requireSuccess(result, "GitHub user lookup");
+  const login = result.stdout.trim();
+  if (!login) {
+    throw new Error("Could not resolve authenticated GitHub login.");
+  }
+
+  return login;
+}
+
+export async function forkExists(
+  forkRepo: string,
+  runner: CommandRunner = runCommand
+): Promise<boolean> {
+  const result = await runner("gh", ["repo", "view", forkRepo, "--json", "nameWithOwner"], {
+    timeoutMs: 30000
+  });
+  return result.exitCode === 0;
+}
+
+export async function ensureUserFork(
+  upstreamRepo: string,
+  runner: CommandRunner = runCommand
+): Promise<{ login: string; forkRepo: string; created: boolean }> {
+  const login = await getAuthenticatedGitHubLogin(runner);
+  const forkRepo = forkRepoName(login, upstreamRepo);
+  if (await forkExists(forkRepo, runner)) {
+    return { login, forkRepo, created: false };
+  }
+
+  const result = await runner("gh", ["repo", "fork", upstreamRepo, "--remote=false"], {
+    timeoutMs: 180000
+  });
+  requireSuccess(result, `Fork ${upstreamRepo}`);
+  return { login, forkRepo, created: true };
 }
 
 export async function getRepoView(repo: string): Promise<GitHubRepoView> {
@@ -238,19 +343,60 @@ export async function findPotentialDuplicatePullRequests(
 
 export async function createPullRequest(
   repoDir: string,
+  upstreamRepo: string,
   title: string,
   body: string
 ): Promise<string> {
-  const result = await runCommand("gh", [
-    "pr",
-    "create",
-    "--title",
-    title,
-    "--body",
-    body
-  ], { cwd: repoDir });
+  const result = await runCommand("gh", buildCreatePullRequestArgs(upstreamRepo, title, body), {
+    cwd: repoDir
+  });
   requireSuccess(result, "GitHub PR create");
   return result.stdout;
+}
+
+export async function fetchPullRequestComments(
+  repo: string,
+  prNumber: number
+): Promise<GitHubPullRequestComment[]> {
+  const result = await runCommand("gh", [
+    "api",
+    `repos/${repo}/issues/${prNumber}/comments`
+  ], { timeoutMs: 30000 });
+  requireSuccess(result, `GitHub PR comments ${repo}#${prNumber}`);
+  return JSON.parse(result.stdout) as GitHubPullRequestComment[];
+}
+
+export async function fetchPullRequestReviews(
+  repo: string,
+  prNumber: number
+): Promise<GitHubPullRequestReview[]> {
+  const result = await runCommand("gh", [
+    "api",
+    `repos/${repo}/pulls/${prNumber}/reviews`
+  ], { timeoutMs: 30000 });
+  requireSuccess(result, `GitHub PR reviews ${repo}#${prNumber}`);
+  return JSON.parse(result.stdout) as GitHubPullRequestReview[];
+}
+
+export async function fetchPullRequestChecks(
+  repo: string,
+  prNumber: number
+): Promise<GitHubCheckSummary[]> {
+  const headResult = await runCommand("gh", [
+    "api",
+    `repos/${repo}/pulls/${prNumber}`,
+    "--jq",
+    ".head.sha"
+  ], { timeoutMs: 30000 });
+  requireSuccess(headResult, `GitHub PR head ${repo}#${prNumber}`);
+  const sha = headResult.stdout.trim();
+  const checksResult = await runCommand("gh", [
+    "api",
+    `repos/${repo}/commits/${sha}/check-runs`
+  ], { timeoutMs: 30000 });
+  requireSuccess(checksResult, `GitHub PR checks ${repo}#${prNumber}`);
+  const payload = JSON.parse(checksResult.stdout) as { check_runs?: GitHubCheckSummary[] };
+  return payload.check_runs ?? [];
 }
 
 export function issueToOpportunity(

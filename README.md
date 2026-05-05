@@ -25,15 +25,17 @@ Use Ghostpatch to find a good issue in my configured repos, solve it locally, an
 Ghostpatch gives agents a supervised open-source contribution workflow:
 
 - find repositories and open GitHub issues
+- fork selected live-work repositories into the authenticated user's GitHub profile
 - qualify candidates by labels, reproduction detail, tests, contribution-guide signals, bot/AI restrictions, and license metadata
 - clone selected repos into `~/.ghostpatch/workspaces`
 - ask Codex, Claude, or a local deterministic agent to solve locally
 - run the configured validation command
 - store scan history, review state, patch results, command logs, reproduction logs, diffs, and test output
+- store PR memory for follow-up work after CI failures or maintainer feedback
 - show what changed and what risk remains
 - publish issues or PRs only after explicit user confirmation
 
-Ghostpatch is not an autonomous PR bot. It is designed for supervised agent work.
+Ghostpatch is supervised by default. Autonomous publishing exists only in the explicit `ghostpatch surge` extension mode.
 
 ## Install as a Skill
 
@@ -75,8 +77,26 @@ ghostpatch
 - Node.js 22 or newer
 - Git
 - GitHub CLI
-- `gh auth login` before live scan or publish
+- `GH_TOKEN` or `GITHUB_TOKEN` before live scan or publish
 - Optional: Codex CLI or Claude CLI
+
+## GitHub Auth
+
+Ghostpatch uses token-first GitHub auth for live scan and publish. Set one of these environment variables before running live GitHub actions:
+
+```powershell
+$env:GH_TOKEN="your_token"
+setx GH_TOKEN "your_token"
+```
+
+Alternative:
+
+```powershell
+$env:GITHUB_TOKEN="your_token"
+setx GITHUB_TOKEN "your_token"
+```
+
+`ghostpatch setup` will ask which variable to use, validate it when present, and save only the variable name in Ghostpatch preferences.
 
 ## First Run
 
@@ -98,6 +118,7 @@ Setup stores:
 - preferred languages
 - manual repos or auto-search mode
 - approval mode
+- preferred GitHub token env var: `GH_TOKEN` or `GITHUB_TOKEN`
 - per-repo validation command overrides
 
 Per-repo validation commands use:
@@ -120,10 +141,13 @@ The review command is where solving and publishing happen. It can:
 - compare candidate quality
 - resume interrupted reviews
 - reject candidates with reasons
+- create or reuse your GitHub fork for the selected repository
 - show issue and PR drafts
 - ask the configured agent to solve locally
 - show changed files, test output, blockers, and remaining risk
 - create issues or PRs only after confirmation
+
+When you explicitly want continuous autonomous operation, use `ghostpatch surge`. That mode keeps normal review unchanged and only runs when directly invoked.
 
 ## CLI Commands
 
@@ -131,6 +155,7 @@ The review command is where solving and publishing happen. It can:
 ghostpatch setup
 ghostpatch scan
 ghostpatch scan --live
+ghostpatch surge --max-prs 1 --max-runtime-minutes 30
 ghostpatch review
 ghostpatch agents
 ghostpatch login codex --command codex
@@ -139,9 +164,18 @@ ghostpatch login codex --dry-run-command "codex exec --sandbox read-only {{promp
 ghostpatch run --agent codex --fixture python-fastapi-bug
 ```
 
+`ghostpatch login` configures the coding agent command. GitHub access comes from `GH_TOKEN` or `GITHUB_TOKEN`.
+
 Use plain `ghostpatch scan` for a safe fixture demo.
 
 Use `ghostpatch scan --live` for real GitHub issue discovery.
+
+Use `ghostpatch surge` only when you explicitly want continuous find -> solve -> publish behavior with hard limits and quality gates.
+
+For live GitHub solve and PR flow, Ghostpatch uses:
+
+- `origin` = your fork
+- `upstream` = the original repository
 
 ## Safety Model
 
@@ -159,6 +193,14 @@ Ghostpatch blocks or warns before publication when it detects:
 - possible duplicate issue or pull request
 - draft-only approval mode
 
+In `ghostpatch surge`, Ghostpatch additionally enforces:
+
+- max PRs per run
+- max runtime
+- max failures before stop
+- repo scan limit per cycle
+- candidate-quality threshold before publish
+
 Live patching happens under `~/.ghostpatch/workspaces`, not in the Ghostpatch source repository.
 
 ## Stored Data
@@ -169,6 +211,8 @@ Live patching happens under `~/.ghostpatch/workspaces`, not in the Ghostpatch so
 - Scan history: `~/.ghostpatch/reports`
 - Review state: `~/.ghostpatch/review-state`
 - Patch results: `~/.ghostpatch/patch-results`
+- PR memory: `~/.ghostpatch/pr-memory`
+- Surge runs: `~/.ghostpatch/surge`
 - Workspaces: `~/.ghostpatch/workspaces`
 
 ## Development

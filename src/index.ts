@@ -12,6 +12,7 @@ import { createAgentProvider } from "./agents/agent-registry.js";
 import { runSetupWizard } from "./ui/setup-wizard.js";
 import { runScanSession } from "./ui/scan-session.js";
 import { runReviewSession } from "./ui/review-session.js";
+import { runSurge } from "./surge/surge-runner.js";
 
 async function main(): Promise<void> {
   const options = parseCli(process.argv.slice(2));
@@ -43,6 +44,11 @@ async function main(): Promise<void> {
 
   if (options.command === "review") {
     await runReviewSession();
+    return;
+  }
+
+  if (options.command === "surge") {
+    await runSurge(options);
     return;
   }
 

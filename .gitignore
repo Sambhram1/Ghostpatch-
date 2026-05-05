@@ -6,3 +6,6 @@ reports/
 .npm-cache/
 .tmp-ghostpatch/
 .tmp-*/
+.agents/
+.claude/
+.windsurf/

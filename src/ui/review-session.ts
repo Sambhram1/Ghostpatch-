@@ -16,12 +16,26 @@ import {
   createPullRequest,
   findPotentialDuplicateIssues,
   findPotentialDuplicatePullRequests,
+  parsePullRequestNumber,
   type GitHubSearchMatch
 } from "../github/github-cli.js";
+import { requireConfiguredGitHubAuth } from "../github/github-auth.js";
+import {
+  buildPrMemoryResumePrompt
+} from "../memory/pr-memory-prompt.js";
+import {
+  refreshPrMemoryFromGitHub
+} from "../memory/pr-memory-refresh.js";
+import {
+  linkPrMemory,
+  loadPrMemoryBySlug,
+  savePrMemory
+} from "../memory/pr-memory-store.js";
 import { loadPatchResult, type LivePatchResult } from "../live/patch-result-store.js";
 import { reviewPatchSafety } from "../live/safety.js";
-import { solveOpportunity } from "../live/solver.js";
+import { solveOpportunity, solveOpportunityFromMemory } from "../live/solver.js";
 import { loadPreferences } from "../preferences/preferences-store.js";
+import { evaluatePatchPublishBlockers } from "../surge/surge-gate.js";
 import {
   commitAll,
   currentBranch,
@@ -41,10 +55,29 @@ import {
   typeLine
 } from "./terminal.js";
 
-type ReviewAction = "issue" | "publish-issue" | "solve" | "pr" | "publish-pr" | "reject" | "skip" | "quit";
+type ReviewAction = "issue" | "publish-issue" | "solve" | "resume-memory" | "pr" | "publish-pr" | "reject" | "skip" | "quit";
+
+async function ensurePublishGitHubAuth(
+  envVar: "GH_TOKEN" | "GITHUB_TOKEN"
+): Promise<void> {
+  try {
+    await requireConfiguredGitHubAuth({
+      githubAuth: {
+        envVar
+      }
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`${message} Set ${envVar} before live GitHub actions.`);
+  }
+}
 
 export function patchPublishBlockers(result: LivePatchResult): string[] {
-  return reviewPatchSafety(result, result.diffBudget).blockers;
+  return evaluatePatchPublishBlockers(result);
+}
+
+export function renderForkStatus(forkRepo: string, upstreamRepo: string): string {
+  return `origin=${forkRepo}, upstream=${upstreamRepo}`;
 }
 
 function confidence(run: OpportunityRun): string {
@@ -145,7 +178,8 @@ function printCandidateComparison(runs: OpportunityRun[]): void {
 
 function printSolvePreview(run: OpportunityRun): void {
   divider("commands to run");
-  console.log(`gh repo clone ${run.opportunity.repoProfile.repo} <ghostpatch workspace>`);
+  console.log(`gh repo fork ${run.opportunity.repoProfile.repo} --remote=false`);
+  console.log(`gh repo clone <your-fork-of-${run.opportunity.repoProfile.repo}> <ghostpatch workspace>`);
   console.log(`git checkout -B ghostpatch/${run.opportunity.slug}`);
   console.log("configured agent in workspace-write mode");
   console.log(run.opportunity.validationCommand);
@@ -155,6 +189,9 @@ function printPatchSummary(result: LivePatchResult): void {
   const safety = reviewPatchSafety(result, result.diffBudget);
   divider("patch summary");
   printKeyValue("workspace", result.repoDir);
+  if (result.forkRepo && result.upstreamRepo) {
+    printKeyValue("remotes", renderForkStatus(result.forkRepo, result.upstreamRepo));
+  }
   printKeyValue("branch", result.branch);
   printList("changed files", result.changedFiles);
   printKeyValue("diff lines", `${safety.diffLineCount}/${result.diffBudget}`);
@@ -258,6 +295,7 @@ export async function runReviewSession(): Promise<void> {
       { label: "Show issue draft", value: "issue" },
       { label: "Publish issue with gh", value: "publish-issue" },
       { label: "Ask agent to solve next", value: "solve" },
+      { label: "Resume From PR memory", value: "resume-memory" },
       { label: "Show direct PR draft", value: "pr" },
       { label: "Publish PR from solved patch", value: "publish-pr" },
       { label: "Reject with reason", value: "reject" },
@@ -278,6 +316,10 @@ export async function runReviewSession(): Promise<void> {
         console.log(color("Draft-only mode is enabled. Issue creation skipped.", ansi.yellow));
         continue;
       }
+
+      await spinner("Checking GitHub token", async () =>
+        ensurePublishGitHubAuth(preferences.githubAuth.envVar)
+      );
 
       const duplicateIssues = await spinner("Checking for duplicate open issues", async () =>
         findPotentialDuplicateIssues(
@@ -329,11 +371,50 @@ export async function runReviewSession(): Promise<void> {
         solveOpportunity(run.opportunity)
       );
       printPatchSummary(result);
+    } else if (action === "resume-memory") {
+      const memory = await spinner("Loading PR memory", async () =>
+        loadPrMemoryBySlug(run.opportunity.slug)
+      );
+      if (!memory) {
+        console.log(color("No PR memory found for this candidate. Solve it first to create memory.", ansi.yellow));
+        continue;
+      }
+
+      let currentMemory = memory;
+      if (memory.prNumber) {
+        await spinner("Checking GitHub token", async () =>
+          ensurePublishGitHubAuth(preferences.githubAuth.envVar)
+        );
+        currentMemory = await spinner("Refreshing PR follow-up memory", async () =>
+          refreshPrMemoryFromGitHub(memory)
+        );
+        await spinner("Saving refreshed PR memory", async () =>
+          savePrMemory(currentMemory)
+        );
+      }
+
+      divider("pr memory");
+      const resumePrompt = buildPrMemoryResumePrompt(currentMemory);
+      console.log(resumePrompt);
+      const confirmed = await promptConfirm("Use this memory to resume solve now?", false);
+      if (!confirmed) {
+        console.log(color("Resume solve cancelled.", ansi.yellow));
+        continue;
+      }
+
+      const result = await spinner("Resuming solve from PR memory", async () =>
+        solveOpportunityFromMemory(run.opportunity, resumePrompt)
+      );
+      printPatchSummary(result);
     } else if (action === "publish-pr") {
       if (!publishingEnabled) {
         console.log(color("Draft-only mode is enabled. PR creation skipped.", ansi.yellow));
         continue;
       }
+
+      await spinner("Checking GitHub token", async () =>
+        ensurePublishGitHubAuth(preferences.githubAuth.envVar)
+      );
 
       const result = await loadPatchResult(run.opportunity.slug);
       if (!result) {
@@ -353,7 +434,7 @@ export async function runReviewSession(): Promise<void> {
 
       const duplicatePrs = await spinner("Checking for duplicate open PRs", async () =>
         findPotentialDuplicatePullRequests(
-          result.repo,
+          result.upstreamRepo ?? result.repo,
           result.title,
           result.branch
         )
@@ -383,8 +464,18 @@ export async function runReviewSession(): Promise<void> {
         pushBranch(result.repoDir, result.branch)
       );
       const prUrl = await spinner("Creating GitHub PR", async () =>
-        createPullRequest(result.repoDir, draft.title, draft.body)
+        createPullRequest(result.repoDir, result.upstreamRepo ?? result.repo, draft.title, draft.body)
       );
+      const prNumber = parsePullRequestNumber(prUrl);
+      if (prNumber) {
+        const memory = await loadPrMemoryBySlug(result.slug);
+        if (memory) {
+          await savePrMemory(linkPrMemory(memory, {
+            prNumber,
+            prUrl
+          }));
+        }
+      }
       console.log(prUrl);
     } else if (action === "reject") {
       const reason = await promptText("Reject reason", "not worth pursuing");

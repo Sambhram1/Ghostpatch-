@@ -88,7 +88,8 @@ export async function runScanSession(options: ScanSessionOptions = {}): Promise<
     return scanGitHubIssues({
       repos,
       languages: effectivePreferences.languages,
-      autoSearch
+      autoSearch,
+      githubEnvVar: effectivePreferences.githubAuth.envVar
     });
   });
   const filtered = applyManualRepos(

@@ -5,6 +5,9 @@ import { ghostpatchHome, ghostpatchPath } from "../config-home.js";
 export interface LivePatchResult {
   slug: string;
   repo: string;
+  forkRepo?: string;
+  upstreamRepo?: string;
+  githubLogin?: string;
   repoDir: string;
   branch: string;
   title: string;

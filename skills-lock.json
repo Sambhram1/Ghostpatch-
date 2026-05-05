@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "ghostpatch": {
+      "source": "Sambhram1/Ghostpatch-",
+      "sourceType": "github",
+      "skillPath": "skills/ghostpatch/SKILL.md",
+      "computedHash": "ad68822dc973c0bc7cf4d4a3fac3ae078b9829c69be884d204c55310b8b3d748"
+    }
+  }
+}

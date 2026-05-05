@@ -8,16 +8,19 @@ import {
   searchReposByLanguage
 } from "./github-cli.js";
 import { qualifyGitHubIssue } from "./quality.js";
+import type { GitHubTokenEnvVar } from "../preferences/preferences-store.js";
 
 export interface LiveScanOptions {
   repos?: string[];
   languages: SupportedLanguage[];
   issueLimit?: number;
   autoSearch?: boolean;
+  githubEnvVar?: GitHubTokenEnvVar;
+  repoLimit?: number;
 }
 
 export async function scanGitHubIssues(options: LiveScanOptions): Promise<Opportunity[]> {
-  await ensureGitHubAuth();
+  await ensureGitHubAuth(options.githubEnvVar ?? "GH_TOKEN");
   const opportunities: Opportunity[] = [];
   const repos = new Set(options.repos ?? []);
 
@@ -30,7 +33,13 @@ export async function scanGitHubIssues(options: LiveScanOptions): Promise<Opport
     }
   }
 
+  let scannedRepos = 0;
   for (const repoName of repos) {
+    if (options.repoLimit && scannedRepos >= options.repoLimit) {
+      break;
+    }
+
+    scannedRepos += 1;
     const repo = await getRepoView(repoName);
     const signals = await inspectRepoSignals(repo);
     const issues = await listRepoIssues(repoName, options.issueLimit ?? 20);

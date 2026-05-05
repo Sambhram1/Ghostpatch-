@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 
-import { patchPublishBlockers } from "../src/ui/review-session.js";
+import { patchPublishBlockers, renderForkStatus } from "../src/ui/review-session.js";
 import { reviewPatchSafety } from "../src/live/safety.js";
 import type { LivePatchResult } from "../src/live/patch-result-store.js";
 
@@ -60,4 +60,11 @@ export async function testPatchSafetyReview(): Promise<void> {
   assert.match(review.blockers.join("\n"), /over the 1 line budget/);
   assert.match(review.blockers.join("\n"), /secret-like content/);
   assert.match(review.warnings.join("\n"), /package-lock\.json/);
+}
+
+export async function testRenderForkStatus(): Promise<void> {
+  assert.equal(
+    renderForkStatus("octocat/project", "owner/project"),
+    "origin=octocat/project, upstream=owner/project"
+  );
 }

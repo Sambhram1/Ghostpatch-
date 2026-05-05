@@ -6,6 +6,7 @@ export type CliOptions =
   | AgentsOptions
   | SetupOptions
   | ScanOptions
+  | SurgeOptions
   | ReviewOptions
   | HelpOptions;
 
@@ -40,6 +41,14 @@ export interface ReviewOptions {
   command: "review";
 }
 
+export interface SurgeOptions {
+  command: "surge";
+  maxPrs?: number;
+  maxRuntimeMinutes?: number;
+  maxFailures?: number;
+  repoLimit?: number;
+}
+
 export interface HelpOptions {
   command: "help";
   message: string;
@@ -55,6 +64,16 @@ export function parseCli(argv: string[]): CliOptions {
     return {
       command,
       live: rest.includes("--live")
+    };
+  }
+
+  if (command === "surge") {
+    return {
+      command,
+      maxPrs: parseNumberFlag(rest, "--max-prs"),
+      maxRuntimeMinutes: parseNumberFlag(rest, "--max-runtime-minutes"),
+      maxFailures: parseNumberFlag(rest, "--max-failures"),
+      repoLimit: parseNumberFlag(rest, "--repo-limit")
     };
   }
 
@@ -109,14 +128,33 @@ function parseAgent(value: string | undefined): CodingAgentName {
   throw new Error(`Unsupported agent: ${value}`);
 }
 
+function parseNumberFlag(rest: string[], flag: string): number | undefined {
+  const index = rest.indexOf(flag);
+  if (index < 0) {
+    return undefined;
+  }
+
+  const value = rest[index + 1];
+  const parsed = Number(value);
+  if (!value || !Number.isFinite(parsed) || parsed <= 0) {
+    throw new Error(`Invalid value for ${flag}: ${value ?? "(missing)"}\n\n${helpText()}`);
+  }
+
+  return parsed;
+}
+
 function helpText(): string {
   return [
     "Ghostpatch",
+    "",
+    "GitHub auth for live scan and publish uses GH_TOKEN or GITHUB_TOKEN.",
+    "ghostpatch login configures the coding agent command, not GitHub access.",
     "",
     "Commands:",
     "  ghostpatch run [--agent local|codex|claude] [--fixture slug]",
     "  ghostpatch setup",
     "  ghostpatch scan [--live]",
+    "  ghostpatch surge [--max-prs N] [--max-runtime-minutes N] [--max-failures N] [--repo-limit N]",
     "  ghostpatch review",
     "  ghostpatch login <local|codex|claude> [--command path] [--dry-run-command command] [--env ENV_VAR]",
     "  ghostpatch agents",

@@ -1,12 +1,16 @@
 import { saveAgentConnection } from "../agents/agent-config.js";
 import { createAgentProvider } from "../agents/agent-registry.js";
-import { ensureGitHubAuth } from "../github/github-cli.js";
 import type { CodingAgentName, SupportedLanguage } from "../types.js";
 import {
   type ApprovalMode,
+  type GitHubTokenEnvVar,
   type RepoSourceMode,
   savePreferences
 } from "../preferences/preferences-store.js";
+import {
+  resolveGitHubToken,
+  validateGitHubToken
+} from "../github/github-auth.js";
 import {
   ansi,
   brand,
@@ -62,6 +66,30 @@ function parseRepoTestCommands(value: string): Record<string, string> {
   );
 }
 
+export function defaultGitHubEnvVarChoice(
+  current?: GitHubTokenEnvVar
+): GitHubTokenEnvVar {
+  return current ?? "GH_TOKEN";
+}
+
+export function renderMissingGitHubTokenInstructions(
+  envVar: GitHubTokenEnvVar
+): string {
+  return [
+    `GitHub token not found in ${envVar}.`,
+    "",
+    "Create a GitHub personal access token, then set it like this:",
+    "",
+    "PowerShell (current session):",
+    `  $env:${envVar}="your_token"`,
+    "",
+    "PowerShell (persist for future sessions):",
+    `  setx ${envVar} "your_token"`,
+    "",
+    "You can finish setup now and add the token later."
+  ].join("\n");
+}
+
 export async function runSetupWizard(): Promise<void> {
   brand();
   await typeLine("Let us set up Ghostpatch for a low-friction terminal workflow.");
@@ -110,6 +138,14 @@ export async function runSetupWizard(): Promise<void> {
     { label: "Draft only, never publish", value: "draft-only" }
   ]);
 
+  const githubEnvVar = await promptChoice<GitHubTokenEnvVar>(
+    "Which GitHub token variable should Ghostpatch use?",
+    [
+      { label: "GH_TOKEN", value: "GH_TOKEN" },
+      { label: "GITHUB_TOKEN", value: "GITHUB_TOKEN" }
+    ]
+  );
+
   const connection = await spinner("Saving agent connection", async () =>
     saveAgentConnection({
       agent,
@@ -129,18 +165,28 @@ export async function runSetupWizard(): Promise<void> {
       manualRepos: parseRepos(manualRepoInput),
       repoTestCommands: parseRepoTestCommands(testCommandInput),
       approvalMode,
+      githubAuth: {
+        envVar: githubEnvVar
+      },
       setupCompletedAt: new Date().toISOString()
     })
   );
 
-  const checkGithub = await promptConfirm("Check GitHub CLI login now?", true);
-  let githubStatus = "not checked";
-  if (checkGithub) {
-    try {
-      await spinner("Checking GitHub CLI auth", async () => ensureGitHubAuth());
-      githubStatus = "ready";
-    } catch {
-      githubStatus = "not logged in - run gh auth login";
+  const { token } = resolveGitHubToken(githubEnvVar);
+  let githubStatus = `not ready - ${githubEnvVar} is not set`;
+  if (!token) {
+    console.log("");
+    console.log(renderMissingGitHubTokenInstructions(githubEnvVar));
+    console.log("");
+  } else {
+    const authStatus = await spinner("Validating GitHub token", async () =>
+      validateGitHubToken(githubEnvVar, token)
+    );
+    githubStatus = authStatus.ok
+      ? "ready"
+      : `invalid token - recheck ${githubEnvVar}`;
+    if (!authStatus.ok) {
+      console.log(color(authStatus.message, ansi.yellow));
     }
   }
 

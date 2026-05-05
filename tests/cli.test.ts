@@ -33,3 +33,40 @@ export async function testLoginParsing(): Promise<void> {
   assert.equal(options.commandPath, "claude");
   assert.equal(options.dryRunCommand, "claude -p {{prompt}}");
 }
+
+export async function testHelpMentionsTokenAuth(): Promise<void> {
+  const options = parseCli(["--help"]);
+
+  assert.equal(options.command, "help");
+  if (options.command !== "help") {
+    throw new Error("expected help command");
+  }
+
+  assert.match(options.message, /GH_TOKEN|GITHUB_TOKEN/);
+  assert.match(options.message, /ghostpatch login configures the coding agent command/i);
+  assert.match(options.message, /ghostpatch surge/i);
+}
+
+export async function testSurgeParsing(): Promise<void> {
+  const options = parseCli([
+    "surge",
+    "--max-prs",
+    "2",
+    "--max-runtime-minutes",
+    "15",
+    "--max-failures",
+    "4",
+    "--repo-limit",
+    "8"
+  ]);
+
+  assert.equal(options.command, "surge");
+  if (options.command !== "surge") {
+    throw new Error("expected surge command");
+  }
+
+  assert.equal(options.maxPrs, 2);
+  assert.equal(options.maxRuntimeMinutes, 15);
+  assert.equal(options.maxFailures, 4);
+  assert.equal(options.repoLimit, 8);
+}

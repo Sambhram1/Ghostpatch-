@@ -45,8 +45,19 @@ When the user asks to find issues, solve issues, or raise PRs:
 1. Check prerequisites:
 
 ```bash
-gh auth status
 node <skill-folder>/scripts/ghostpatch.mjs --help
+```
+
+Confirm the configured GitHub token variable is set:
+
+```powershell
+$env:GH_TOKEN
+```
+
+or:
+
+```powershell
+$env:GITHUB_TOKEN
 ```
 
 2. Configure the agent if needed:
@@ -62,6 +73,8 @@ node <skill-folder>/scripts/ghostpatch.mjs login claude --command claude
 node <skill-folder>/scripts/ghostpatch.mjs setup
 ```
 
+`setup` asks whether Ghostpatch should use `GH_TOKEN` or `GITHUB_TOKEN`, validates it when present, and saves only the variable name.
+
 4. Scan:
 
 ```bash
@@ -74,16 +87,18 @@ node <skill-folder>/scripts/ghostpatch.mjs scan --live
 node <skill-folder>/scripts/ghostpatch.mjs review
 ```
 
-6. In review, only choose publish actions after the user confirms the candidate, patch, tests, and post body.
+6. For live solve work, Ghostpatch creates or reuses the authenticated user's fork, uses that fork as `origin`, keeps the original repository as `upstream`, and then works in the local workspace.
+
+7. In review, only choose publish actions after the user confirms the candidate, patch, tests, and post body.
 
 ## Agent Behavior
 
 - Prefer `scan --live` for real GitHub work.
 - Use plain `scan` for demos and safe dry runs.
-- Use `review` for all solve and publish actions.
+- Use `review` for all solve and publish actions in the normal workflow.
 - Never bypass Ghostpatch's duplicate checks, diff-budget checks, branch checks, test checks, or publication confirmations.
 - If Ghostpatch blocks a PR, report the blocker instead of working around it.
-- If the user asks for full automation, explain that Ghostpatch is intentionally approval-gated before publication.
+- If the user explicitly asks for autonomous continuous operation, use `ghostpatch surge`. Do not invoke that mode unless the user asks for it.
 
 ## What Ghostpatch Shows
 
@@ -105,6 +120,7 @@ During review, Ghostpatch surfaces:
 node <skill-folder>/scripts/ghostpatch.mjs agents
 node <skill-folder>/scripts/ghostpatch.mjs scan
 node <skill-folder>/scripts/ghostpatch.mjs scan --live
+node <skill-folder>/scripts/ghostpatch.mjs surge --max-prs 1 --max-runtime-minutes 30
 node <skill-folder>/scripts/ghostpatch.mjs review
 node <skill-folder>/scripts/ghostpatch.mjs run --agent codex --fixture python-fastapi-bug
 ```
@@ -117,4 +133,6 @@ node <skill-folder>/scripts/ghostpatch.mjs run --agent codex --fixture python-fa
 - Scan history: `~/.ghostpatch/reports`
 - Review state: `~/.ghostpatch/review-state`
 - Patch results: `~/.ghostpatch/patch-results`
+- PR memory: `~/.ghostpatch/pr-memory`
+- Surge runs: `~/.ghostpatch/surge`
 - Workspaces: `~/.ghostpatch/workspaces`

@@ -5,6 +5,11 @@ import type { CodingAgentName, SupportedLanguage } from "../types.js";
 
 export type RepoSourceMode = "auto" | "manual" | "both";
 export type ApprovalMode = "always-ask" | "draft-only";
+export type GitHubTokenEnvVar = "GH_TOKEN" | "GITHUB_TOKEN";
+
+export interface GitHubAuthPreferences {
+  envVar: GitHubTokenEnvVar;
+}
 
 export interface GhostpatchPreferences {
   agent: CodingAgentName;
@@ -13,6 +18,7 @@ export interface GhostpatchPreferences {
   manualRepos: string[];
   repoTestCommands: Record<string, string>;
   approvalMode: ApprovalMode;
+  githubAuth: GitHubAuthPreferences;
   setupCompletedAt?: string;
 }
 
@@ -22,7 +28,10 @@ export const defaultPreferences: GhostpatchPreferences = {
   repoSourceMode: "manual",
   manualRepos: [],
   repoTestCommands: {},
-  approvalMode: "always-ask"
+  approvalMode: "always-ask",
+  githubAuth: {
+    envVar: "GH_TOKEN"
+  }
 };
 
 function preferencesPath(): string {
