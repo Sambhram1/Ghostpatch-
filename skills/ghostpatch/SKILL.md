@@ -1,6 +1,7 @@
 ---
 name: ghostpatch
 description: Use Ghostpatch as an agent-native open-source contribution plugin for Codex, Claude Code, and other coding agents. Trigger when a user wants the agent to find repositories, discover GitHub issues, qualify candidates, solve issues locally, review diffs/tests, and raise approval-gated pull requests using the Ghostpatch workflow.
+license: MIT
 ---
 
 # Ghostpatch
